@@ -1,0 +1,23 @@
+#include "Transform.h"
+
+Transform::Transform()
+    : m_position(0, 0, 0), m_rotation(0, 0, 0), m_scale(1, 1, 1) {
+    UpdateMatrix();
+}
+
+void Transform::UpdateMatrix() 
+{
+    MyMatrix4x4 matS = MyMatrix4x4::CreateScale(m_scale.x, m_scale.y, m_scale.z);
+
+    MyMatrix4x4 matRX = MyMatrix4x4::CreateRotationX(m_rotation.x);
+    MyMatrix4x4 matRY = MyMatrix4x4::CreateRotationY(m_rotation.y);
+    MyMatrix4x4 matRZ = MyMatrix4x4::CreateRotationZ(m_rotation.z);
+
+    MyMatrix4x4 matT = MyMatrix4x4::CreateTranslation(m_position.x, m_position.y, m_position.z);
+
+    MyMatrix4x4 matR = MyMatrix4x4::Multiply(matRX, matRY);
+    matR = MyMatrix4x4::Multiply(matR, matRZ);
+
+    m_worldMatrix = MyMatrix4x4::Multiply(matS, matR);
+    m_worldMatrix = MyMatrix4x4::Multiply(m_worldMatrix, matT);
+}

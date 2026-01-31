@@ -129,9 +129,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="GameInstance.h" />
+    <ClInclude Include="MyMatrix4x4.h" />
+    <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GameInstance.cpp" />
+    <ClCompile Include="MyMatrix4x4.cpp" />
+    <ClCompile Include="Transform.cpp" />
     <ClCompile Include="WinMain.cpp.cpp" />
   </ItemGroup>
   <ItemGroup>

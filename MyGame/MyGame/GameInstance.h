@@ -15,8 +15,14 @@ struct ConstantBuffer
 	DirectX::XMMATRIX worldViewProj; // 3Ç¬ÇÃçsóÒÇä|ÇØçáÇÌÇπÇΩÇ‡ÇÃ
 };
 
-struct ConstantBufferData {
+struct ConstantBufferData 
+{
 	DirectX::XMMATRIX wvp; // World * View * Projection
+};
+
+struct MyMatrix 
+{
+	float m[4][4];
 };
 
 class GameInstance
@@ -28,6 +34,7 @@ public:
 	bool Initialize(HWND hWnd, int width, int height);
 	void Render();
 	void Finalize();
+
 
 private:
 	Microsoft::WRL::ComPtr<ID3D11Device>           m_device;

@@ -1,4 +1,6 @@
 #include "GameInstance.h"
+#include "MyMatrix4x4.h"
+#include "Transform.h"
 #include <d3dcompiler.h>
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
@@ -96,21 +98,48 @@ void GameInstance::Render()
     static float angle = 0.0f;
     angle += 0.01f; // 回転角を更新
 
-    // ワールド行列（回転）
-    DirectX::XMMATRIX world = DirectX::XMMatrixRotationY(angle);
-    // ビュー行列（カメラの位置）
-    DirectX::XMVECTOR eye = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);
-    DirectX::XMVECTOR at = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-    DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(eye, at, up);
-    // プロジェクション行列（遠近感）
-    DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 100.0f);
+    //// ワールド行列（回転）
+    //DirectX::XMMATRIX world = DirectX::XMMatrixRotationY(angle);
+    //// ビュー行列（カメラの位置）
+    //DirectX::XMVECTOR eye = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);
+    //DirectX::XMVECTOR at = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+    //DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    //DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(eye, at, up);
+    //// プロジェクション行列（遠近感）
+    //DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 100.0f);
 
-    // 3つを掛け合わせる（DirectXMathでは右から掛ける点に注意）
+    //// 3つを掛け合わせる（DirectXMathでは右から掛ける点に注意）
+    //ConstantBufferData cbData;
+    //cbData.wvp = DirectX::XMMatrixTranspose(world * view * proj); // HLSL用に転置する(CPU と GPU で行列の並びが違う)
+
+    //// GPUへデータを転送
+    //m_context->UpdateSubresource(m_constantBuffer.Get(), 0, nullptr, &cbData, 0, 0);
+
+    Transform player;
+
+    static float a = 0.0f;
+    // a += 0.01f;
+
+    player.SetRotation(0, angle, 0);
+    player.SetPosition(a, 0, 0);
+    player.SetScale(0.5f, 1.0f, 1.0f);
+    player.UpdateMatrix();
+
+    MyMatrix4x4 world = player.GetWorldMatrix();
+
+    MyMatrix4x4 view = MyMatrix4x4::CreateTranslation(0.0f, 0.0f, 2.0f);
+
+    float aspect = 1280.0f / 720.0f;
+    MyMatrix4x4 proj = MyMatrix4x4::CreatePerspective(0.785f, aspect, 0.1f, 100.0f);
+
+    MyMatrix4x4 wvp = MyMatrix4x4::Multiply(world, view);
+    wvp = MyMatrix4x4::Multiply(wvp, proj);
+
     ConstantBufferData cbData;
-    cbData.wvp = DirectX::XMMatrixTranspose(world * view * proj); // HLSL用に転置する(CPU と GPU で行列の並びが違う)
+    MyMatrix4x4 finalMat = wvp.Transpose();
 
-    // GPUへデータを転送
+    memcpy(&cbData.wvp, &finalMat, sizeof(MyMatrix4x4));
+
     m_context->UpdateSubresource(m_constantBuffer.Get(), 0, nullptr, &cbData, 0, 0);
 
     // 定数バッファをシェーダーにセット
