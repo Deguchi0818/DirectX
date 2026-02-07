@@ -1,6 +1,10 @@
 #include "GameInstance.h"
 #include "MyMatrix4x4.h"
 #include "Transform.h"
+#include "Common.h"
+#include "Mesh.h"
+#include "GeometryGenerator.h"
+
 #include <d3dcompiler.h>
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
@@ -32,6 +36,21 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
     );
     if (FAILED(hr)) return false;
 
+
+    D3D11_TEXTURE2D_DESC depthDesc = {};
+    depthDesc.Width = width;
+    depthDesc.Height = height;
+    depthDesc.MipLevels = 1;
+    depthDesc.ArraySize = 1;
+    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; // 奥行き24bit、ステンシル8bit
+    depthDesc.SampleDesc.Count = 1;
+    depthDesc.Usage = D3D11_USAGE_DEFAULT;
+    depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    ComPtr<ID3D11Texture2D> depthBuffer;
+    m_device->CreateTexture2D(&depthDesc, nullptr, &depthBuffer);
+    m_device->CreateDepthStencilView(depthBuffer.Get(), nullptr, &m_depthStencilView);
+
     // レンダーターゲットビュー（キャンバス）の作成
     ComPtr<ID3D11Texture2D> backBuffer;
     m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
@@ -41,22 +60,14 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
     D3D11_VIEWPORT vp = { 0, 0, (float)width, (float)height, 0.0f, 1.0f };
     m_context->RSSetViewports(1, &vp);
 
-    Vertex vertices[] =
-    {
-        {  0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f }, // 赤
-        {  0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f }, // 緑
-        { -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f }, // 青
-    };
+    // 立方体 (サイズ 1.0, 青色) を生成
+    GeometryGenerator::CreateCube(1.0f, { 0.0f, 0.5f, 1.0f, 1.0f }, v, i);
+    m_cubeMesh.Create(m_device.Get(), v.data(), (int)v.size(), i.data(), (int)i.size());
 
-    D3D11_BUFFER_DESC bd = {};
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(vertices);
-    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    // 灰色の地面 (幅 10, 奥行 10)
+    GeometryGenerator::CreatePlane(10.0f, 10.0f, { 0.3f, 0.3f, 0.3f, 1.0f }, v, i);
+    m_planeMesh.Create(m_device.Get(), v.data(), (int)v.size(), i.data(), (int)i.size());
 
-    D3D11_SUBRESOURCE_DATA initData = {};
-    initData.pSysMem = vertices;
-
-    m_device->CreateBuffer(&bd, &initData, &m_vertexBuffer);
 
     ComPtr<ID3DBlob> vsBlob, psBlob, errorBlob;
 
@@ -82,7 +93,30 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
 
     m_device->CreateBuffer(&cbDesc, nullptr, &m_constantBuffer);
 
+    //for (int i = 0; i < 1; i++) {
+    //    GameObject obj;
+    //    //obj.transform.SetPosition(i * 0.2f - 1.0f, 0, 0); // 横に並べる
+    //    m_gameObjects.push_back(obj);
+    //}
+
+    m_gameObjects.clear();
+
+    GameObject ground;
+    ground.pMesh = &m_planeMesh;
+    ground.transform.SetPosition(0, 0, 0);
+    m_gameObjects.push_back(ground);
+
+    // 2. 立方体をいくつか置く
+    for (int i = 0; i < 3; i++) {
+        GameObject cube;
+        cube.pMesh = &m_cubeMesh;
+        cube.transform.SetPosition(i * 1.5f - 1.5f, 0.5f, 0); // 地面より少し上に置く
+        m_gameObjects.push_back(cube);
+    }
+
     return true;
+
+
 }
 
 void GameInstance::Render()
@@ -90,60 +124,19 @@ void GameInstance::Render()
     // 画面をクリアする色
     float clearColor[] = { 0.1f, 0.2f, 0.4f, 1.0f };
 
-    m_context->OMSetRenderTargets(1, m_renderTarget.GetAddressOf(), nullptr);
+    m_context->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+    m_context->OMSetRenderTargets(1, m_renderTarget.GetAddressOf(), m_depthStencilView.Get());
 
     // 指定した色でキャンバスを塗りつぶす
     m_context->ClearRenderTargetView(m_renderTarget.Get(), clearColor);
 
-    static float angle = 0.0f;
-    angle += 0.01f; // 回転角を更新
+    MyMatrix4x4 matCamT = MyMatrix4x4::CreateTranslation(0.0f, -1.0f, 5.0f);
+    MyMatrix4x4 matCamR = MyMatrix4x4::CreateRotationX(-0.2f);
 
-    //// ワールド行列（回転）
-    //DirectX::XMMATRIX world = DirectX::XMMatrixRotationY(angle);
-    //// ビュー行列（カメラの位置）
-    //DirectX::XMVECTOR eye = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);
-    //DirectX::XMVECTOR at = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-    //DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    //DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(eye, at, up);
-    //// プロジェクション行列（遠近感）
-    //DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 100.0f);
-
-    //// 3つを掛け合わせる（DirectXMathでは右から掛ける点に注意）
-    //ConstantBufferData cbData;
-    //cbData.wvp = DirectX::XMMatrixTranspose(world * view * proj); // HLSL用に転置する(CPU と GPU で行列の並びが違う)
-
-    //// GPUへデータを転送
-    //m_context->UpdateSubresource(m_constantBuffer.Get(), 0, nullptr, &cbData, 0, 0);
-
-    Transform player;
-
-    static float a = 0.0f;
-    // a += 0.01f;
-
-    player.SetRotation(0, angle, 0);
-    player.SetPosition(a, 0, 0);
-    player.SetScale(0.5f, 1.0f, 1.0f);
-    player.UpdateMatrix();
-
-    MyMatrix4x4 world = player.GetWorldMatrix();
-
-    MyMatrix4x4 view = MyMatrix4x4::CreateTranslation(0.0f, 0.0f, 2.0f);
-
+    MyMatrix4x4 view = MyMatrix4x4::Multiply(matCamT, matCamR);
     float aspect = 1280.0f / 720.0f;
     MyMatrix4x4 proj = MyMatrix4x4::CreatePerspective(0.785f, aspect, 0.1f, 100.0f);
-
-    MyMatrix4x4 wvp = MyMatrix4x4::Multiply(world, view);
-    wvp = MyMatrix4x4::Multiply(wvp, proj);
-
-    ConstantBufferData cbData;
-    MyMatrix4x4 finalMat = wvp.Transpose();
-
-    memcpy(&cbData.wvp, &finalMat, sizeof(MyMatrix4x4));
-
-    m_context->UpdateSubresource(m_constantBuffer.Get(), 0, nullptr, &cbData, 0, 0);
-
-    // 定数バッファをシェーダーにセット
-    m_context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
 
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
@@ -152,12 +145,21 @@ void GameInstance::Render()
     m_context->VSSetShader(m_vertexShader.Get(), nullptr, 0); // 頂点シェーダーをセット
     m_context->PSSetShader(m_pixelShader.Get(), nullptr, 0); // ピクセルシェーダーをセット
 
-    // どの頂点バッファを使うかセット
-    m_context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
     // 三角形として描く設定
     m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    // 描画実行
-    m_context->Draw(3, 0);
+
+    static float angle = 0;
+    angle += 0.01f;
+
+   for (auto& obj : m_gameObjects) 
+    {
+        // 立方体（pMeshがm_cubeMeshのもの）だけ回す
+        if (obj.pMesh == &m_cubeMesh) {
+            obj.transform.SetRotation(0, angle, 0);
+        }
+   
+        obj.Draw(m_context.Get(), m_constantBuffer.Get(), view, proj);
+    }
 
     // 描画結果を画面に反映（スワップ）
     m_swapChain->Present(1, 0);

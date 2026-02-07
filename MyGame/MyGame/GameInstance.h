@@ -3,27 +3,9 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <directxmath.h>
+#include <vector>
+#include "GameObject.h"
 
-struct Vertex 
-{
-	float x, y, z;
-	float r, g, b, a;
-};
-
-struct ConstantBuffer 
-{
-	DirectX::XMMATRIX worldViewProj; // 3Ç¬ÇÃçsóÒÇä|ÇØçáÇÌÇπÇΩÇ‡ÇÃ
-};
-
-struct ConstantBufferData 
-{
-	DirectX::XMMATRIX wvp; // World * View * Projection
-};
-
-struct MyMatrix 
-{
-	float m[4][4];
-};
 
 class GameInstance
 {
@@ -49,5 +31,16 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>      m_pixelShader;
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> m_constantBuffer;
+
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_depthStencilView;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>           m_indexBuffer;
+
+	std::vector<GameObject> m_gameObjects;
+
+	Mesh m_cubeMesh;
+	Mesh m_planeMesh;
+
+	std::vector<Vertex> v;
+	std::vector<unsigned short> i;
 };
 
