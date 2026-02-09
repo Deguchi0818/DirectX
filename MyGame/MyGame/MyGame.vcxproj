@@ -128,20 +128,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="GameInstance.h" />
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="GeometryGenerator.h" />
+    <ClInclude Include="Graphics.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="MyMatrix4x4.h" />
+    <ClInclude Include="Shader.h" />
     <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="GameInstance.cpp" />
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="GeometryGenerator.cpp" />
+    <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Model.cpp" />
     <ClCompile Include="MyMatrix4x4.cpp" />
+    <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="WinMain.cpp.cpp" />
   </ItemGroup>

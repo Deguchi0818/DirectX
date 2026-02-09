@@ -2,6 +2,7 @@
 #include "Transform.h"
 #include "Common.h"
 #include "Mesh.h"
+#include "Model.h"
 
 #include <d3d11.h>
 #include <wrl/client.h>
@@ -10,11 +11,11 @@ class GameObject
 {
 public:
 	Transform transform;
-	Mesh* pMesh;
+    Model* pModel;
 
     void Draw(ID3D11DeviceContext* context, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj) 
     {
-        if (!pMesh) return; // メッシュがない場合は何もしない
+        if (!pModel) return; // メッシュがない場合は何もしない
 
         // 行列の計算
         transform.UpdateMatrix();
@@ -30,7 +31,7 @@ public:
         // シェーダーに定数バッファをセット
         context->VSSetConstantBuffers(0, 1, &cb);
 
-        pMesh->Draw(context);
+        pModel->Draw(context);
     }
 };
 

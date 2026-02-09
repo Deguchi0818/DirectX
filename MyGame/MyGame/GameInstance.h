@@ -4,8 +4,12 @@
 #include <wrl/client.h>
 #include <directxmath.h>
 #include <vector>
-#include "GameObject.h"
 
+#include "GameObject.h"
+#include "Camera.h"
+#include "Graphics.h"
+#include "Shader.h"
+#include "Model.h"
 
 class GameInstance
 {
@@ -14,33 +18,23 @@ public:
 	~GameInstance();
 
 	bool Initialize(HWND hWnd, int width, int height);
-	void Render();
 	void Finalize();
+	void Update();
+	void Render();
+	void Run();
 
 
 private:
-	Microsoft::WRL::ComPtr<ID3D11Device>           m_device;
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext>    m_context;
-	Microsoft::WRL::ComPtr<IDXGISwapChain>         m_swapChain;
-	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_renderTarget;
 
-	Microsoft::WRL::ComPtr<ID3D11Buffer>           m_vertexBuffer; // 頂点バッファ
-	Microsoft::WRL::ComPtr<ID3D11InputLayout>      m_inputLayout;  // 入力レイアウト
-
-	Microsoft::WRL::ComPtr<ID3D11VertexShader>     m_vertexShader;
-	Microsoft::WRL::ComPtr<ID3D11PixelShader>      m_pixelShader;
-
-	Microsoft::WRL::ComPtr<ID3D11Buffer> m_constantBuffer;
-
-	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_depthStencilView;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>           m_indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>           m_constantBuffer;
 
 	std::vector<GameObject> m_gameObjects;
 
-	Mesh m_cubeMesh;
-	Mesh m_planeMesh;
+	Model m_cubeModel;
+	Model m_planeModel;
 
-	std::vector<Vertex> v;
-	std::vector<unsigned short> i;
+	Graphics m_graphics;
+	Shader m_baseShader;
+	Camera m_camera;
 };
 

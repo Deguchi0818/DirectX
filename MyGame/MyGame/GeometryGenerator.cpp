@@ -1,9 +1,9 @@
 #include "GeometryGenerator.h"
 
-void GeometryGenerator::CreateCube(float size, DirectX::XMFLOAT4 color, std::vector<Vertex>& outVertices, std::vector<unsigned short>& outIndices) {
+void GeometryGenerator::CreateCube(float size, const MyVector4& color, std::vector<Vertex>& outVertices, std::vector<unsigned short>& outIndices) {
     float h = size * 0.5f; // 半径
 
-    // 1. 頂点データ (8頂点)
+    // 頂点データ (8頂点)
     outVertices = {
         { -h,  h, -h, color.x, color.y, color.z, color.w }, // 0
         {  h,  h, -h, color.x, color.y, color.z, color.w }, // 1
@@ -15,7 +15,7 @@ void GeometryGenerator::CreateCube(float size, DirectX::XMFLOAT4 color, std::vec
         { -h, -h,  h, color.x, color.y, color.z, color.w }, // 7
     };
 
-    // 2. インデックスデータ (36個 / 12ポリゴン)
+    // インデックスデータ (36個 / 12ポリゴン)
     outIndices = {
         0, 1, 2, 0, 2, 3, // 前
         4, 6, 5, 4, 7, 6, // 後
@@ -26,7 +26,7 @@ void GeometryGenerator::CreateCube(float size, DirectX::XMFLOAT4 color, std::vec
     };
 }
 
-void GeometryGenerator::CreatePlane(float width, float depth, DirectX::XMFLOAT4 color, std::vector<Vertex>& outVertices, std::vector<unsigned short>& outIndices) {
+void GeometryGenerator::CreatePlane(float width, float depth, const MyVector4& color, std::vector<Vertex>& outVertices, std::vector<unsigned short>& outIndices) {
     float w = width * 0.5f;
     float d = depth * 0.5f;
 

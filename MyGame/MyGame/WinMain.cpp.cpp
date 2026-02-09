@@ -27,6 +27,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow)
         }
         else 
         {
+            game.Update();
             game.Render(); 
         }
     }

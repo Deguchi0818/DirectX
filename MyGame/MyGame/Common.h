@@ -21,3 +21,13 @@ struct MyMatrix
 {
     float m[4][4];
 };
+
+// 3次元ベクトル (座標・回転・スケール用)
+struct MyVector3 {
+    float x, y, z;
+};
+
+// 4次元ベクトル (色：R, G, B, A 用)
+struct MyVector4 {
+    float x, y, z, w; // または r, g, b, a
+};
