@@ -4,12 +4,14 @@
 #include <wrl/client.h>
 #include <directxmath.h>
 #include <vector>
+#include <chrono>
 
 #include "GameObject.h"
 #include "Camera.h"
 #include "Graphics.h"
 #include "Shader.h"
 #include "Model.h"
+#include "Player.h"
 
 class GameInstance
 {
@@ -36,5 +38,9 @@ private:
 	Graphics m_graphics;
 	Shader m_baseShader;
 	Camera m_camera;
+	Player m_player;
+
+	std::chrono::high_resolution_clock::time_point m_lastTime;
+	float m_deltaTime = 0.0f;
 };
 
