@@ -16,6 +16,15 @@ public:
 
 	MyVector3 GetPosition() const { return m_object.transform.GetPosition(); }
 
+	AABB GetAABB() const { return m_object.GetAABB(); }
+
+	void SetPosition(const MyVector3& pos) {
+		m_object.transform.SetPosition(pos.x, pos.y, pos.z);
+		m_object.transform.UpdateMatrix();
+	}
+
+	GameObject& GetGameObject() { return m_object; }
+
 private:
 	GameObject m_object; // ÉvÉåÉCÉÑÅ[ÇÃé¿ëÃ
 	float m_moveSpeed = 5.0f;

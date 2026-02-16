@@ -5,6 +5,7 @@
 #include "Mesh.h"
 #include "GeometryGenerator.h"
 #include "Input.h"
+#include "Collider.h"
 
 #include <d3dcompiler.h>
 #pragma comment(lib, "d3dcompiler.lib")
@@ -18,31 +19,12 @@ GameInstance::~GameInstance() { Finalize(); }
 bool GameInstance::Initialize(HWND hWnd, int width, int height) 
 {
     if (!m_graphics.Initialize(hWnd, width, height)) return false;
-
     auto device = m_graphics.GetDevice();
 
-    if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
+    if (!CreateAssets(device)) return false;
 
-    m_cubeModel.CreateCube(device, 1.0f, { 0.0f, 0.5f, 1.0f, 1.0f });
-    m_planeModel.CreatePlane(device, 10.0f, 10.0f, { 0.0f, 0.5f, 0.0f, 1.0f });
+    CreateScene();
 
-    // 定数バッファ作成
-    D3D11_BUFFER_DESC cbDesc{ .ByteWidth = sizeof(ConstantBufferData), .BindFlags = D3D11_BIND_CONSTANT_BUFFER };
-    device->CreateBuffer(&cbDesc, nullptr, &m_constantBuffer);
-
-    m_gameObjects.clear();
-
-    // オブジェクトの配置
-    GameObject ground{ .pModel = &m_planeModel };
-    m_gameObjects.push_back(ground);
-
-    for (int j = 0; j < 5; j++) {
-        GameObject cube{ .pModel = &m_cubeModel };
-        cube.transform.SetPosition(j * 1.5f - 2.5f, 0.5f, 3);
-        m_gameObjects.push_back(cube);
-    }
-
-    m_player.Initialize(&m_cubeModel);
     m_camera.GetTransform().SetPosition(0.0f, 2.0f, -5.0f);
 
     m_lastTime = std::chrono::high_resolution_clock::now();
@@ -53,6 +35,17 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
 }
 
 void GameInstance::Update() 
+{
+    UpdateSystem();
+   
+    m_player.Update(m_deltaTime, m_camera.GetYaw());
+
+    m_physics.Update(m_deltaTime);
+
+    m_camera.UpdateTPS(m_player.GetPosition());
+}
+
+void GameInstance::UpdateSystem() 
 {
     // デルタタイムの計算
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -90,23 +83,6 @@ void GameInstance::Update()
 
     // マウスを中央に戻す
     SetCursorPos(centerX, centerY);
-
-    // カメラの移動計算
-    // m_camera.Update(m_deltaTime);
-
-    m_player.Update(m_deltaTime, m_camera.GetYaw());
-
-    m_camera.UpdateTPS(m_player.GetPosition());
-
-    // オブジェクトの回転などの計算
-    static float angle = 0;
-    angle += 0.01f;
-    for (auto& obj : m_gameObjects)
-    {
-        if (obj.pModel == &m_cubeModel) {
-            obj.transform.SetRotation(0, angle, 0);
-        }
-    }
 }
 
 void GameInstance::Render()
@@ -129,10 +105,76 @@ void GameInstance::Render()
         obj.Draw(context, m_constantBuffer.Get(), view, proj);
     }
 
+    for (auto& obj : m_terrain)
+    {
+        obj.Draw(context, m_constantBuffer.Get(), view, proj);
+    }
+
     m_player.Draw(context, m_constantBuffer.Get(), view, proj);
 
     //描画終了
     m_graphics.EndScene();
+}
+
+bool GameInstance::CreateAssets(ID3D11Device* device) 
+{
+    if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
+
+    m_cubeModel.CreateCube(device, 1.0f, { 0.0f, 0.5f, 1.0f, 1.0f });
+    m_planeModel.CreatePlane(device, 1.0f, 1.0f, { 0.0f, 0.5f, 0.0f, 1.0f });
+
+    // 定数バッファ作成
+    D3D11_BUFFER_DESC cbDesc{ .ByteWidth = sizeof(ConstantBufferData), .BindFlags = D3D11_BIND_CONSTANT_BUFFER };
+    device->CreateBuffer(&cbDesc, nullptr, &m_constantBuffer);
+
+    return true;
+}
+
+void GameInstance::CreateScene() 
+{
+    m_gameObjects.clear();
+    m_terrain.clear();
+
+    // オブジェクトの配置
+    GameObject floor;
+    floor.pModel = &m_planeModel;
+    floor.transform.SetPosition(0, 0, 0);
+    floor.transform.SetScale(10.0f, 1.0f, 10.0f);
+    floor.isStatic = true;
+    floor.AddCollider("floor_main", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
+    m_terrain.push_back(floor);
+
+    GameObject wall;
+    wall.pModel = &m_cubeModel;
+    wall.transform.SetPosition(5.0f, 0.5f, 0.0f);
+    wall.transform.SetScale(1.0f, 2.0f, 5.0f);
+    wall.isStatic = true;
+    wall.m_isTrigger = false;
+    wall.AddCollider("wall_main", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
+    m_terrain.push_back(wall);
+
+    GameObject coin;
+    coin.pModel = &m_cubeModel;
+    coin.transform.SetPosition(-3.0f, 1.0f, 2.0f);
+    coin.transform.SetScale(0.5f, 0.5f, 0.5f);
+    coin.isStatic = true;
+    coin.m_isTrigger = true;
+    coin.AddCollider("coin_trigger", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f }, true);
+    m_gameObjects.push_back(coin);
+
+    m_player.Initialize(&m_cubeModel);
+
+    m_physics.AddDynamicObject(&m_player.GetGameObject());
+    for (auto& obj : m_terrain)
+    {
+        m_physics.AddStaticObject(&obj);
+    }
+    for (auto& obj : m_gameObjects) 
+    {
+        m_physics.AddStaticObject(&obj);
+    }
+
+   
 }
 
 void GameInstance::Finalize() 

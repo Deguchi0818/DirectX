@@ -1,5 +1,7 @@
 #pragma once
+#define NOMINMAX
 #include <DirectXMath.h>
+
 
 // 頂点の構造
 struct Vertex {
@@ -30,4 +32,14 @@ struct MyVector3 {
 // 4次元ベクトル (色：R, G, B, A 用)
 struct MyVector4 {
     float x, y, z, w; // または r, g, b, a
+};
+
+struct Sphere {
+    float x, y, z;
+    float radius;
+};
+
+struct AABB {
+    MyVector3 min; // 左下奥の点
+    MyVector3 max; // 右上前の点
 };

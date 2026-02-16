@@ -3,15 +3,27 @@
 #include "Common.h"
 #include "Mesh.h"
 #include "Model.h"
+#include "Collider.h"
 
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <vector>
 
 class GameObject
 {
 public:
 	Transform transform;
     Model* pModel;
+
+    bool m_isTrigger = false;
+    bool isStatic = false;
+
+    MyVector3 velocity = { 0.0f, 0.0f, 0.0f };
+    virtual void OnCollisionEnter(GameObject* other) {}
+    virtual void OnTriggerEnter(GameObject* other) {}
+
+    MyVector3 GetVelocity() const { return velocity; }
+    void SetVelocity(const MyVector3& v) { velocity = v; }
 
     void Draw(ID3D11DeviceContext* context, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj) 
     {
@@ -32,6 +44,17 @@ public:
         context->VSSetConstantBuffers(0, 1, &cb);
 
         pModel->Draw(context);
+    }
+
+    AABB GetAABB() const;
+
+    std::vector<ColliderComponent> m_colliders;
+
+    const std::vector<ColliderComponent>& GetColliders() const { return m_colliders; }
+
+    void AddCollider(std::string name, ColliderType type, MyVector3 offset, MyVector3 scale, bool isTrigger = false)
+    {
+        m_colliders.push_back({ name, type, offset, scale, isTrigger });
     }
 };
 
