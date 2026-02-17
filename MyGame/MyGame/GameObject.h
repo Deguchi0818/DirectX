@@ -19,7 +19,7 @@ public:
     bool isStatic = false;
 
     MyVector3 velocity = { 0.0f, 0.0f, 0.0f };
-    virtual void OnCollisionEnter(GameObject* other) {}
+    virtual void OnCollisionEnter(std::string myColName, GameObject* other, std::string otherColName) {}
     virtual void OnTriggerEnter(GameObject* other) {}
 
     MyVector3 GetVelocity() const { return velocity; }

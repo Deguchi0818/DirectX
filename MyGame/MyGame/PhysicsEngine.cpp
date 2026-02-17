@@ -51,7 +51,7 @@ void PhysicsEngine::ResolveCollisions()
                         else 
                         {
                             ResolveOverlap(a, b, worldA, worldB);
-                            a->OnCollisionEnter(b);
+                            a->OnCollisionEnter(colA.name, b, colB.name);
                             isResolved = true;
                             break;
                         }

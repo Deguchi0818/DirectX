@@ -2,7 +2,7 @@
 #include "GameObject.h"
 #include "Camera.h"
 
-class Player
+class Player : public GameObject
 {
 public:
 	Player() = default;
@@ -11,23 +11,15 @@ public:
 
 	void Update(float dt, float camYaw);
 
-	void Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer,
-		const MyMatrix4x4& view, const MyMatrix4x4& projection);
-
-	MyVector3 GetPosition() const { return m_object.transform.GetPosition(); }
-
-	AABB GetAABB() const { return m_object.GetAABB(); }
-
-	void SetPosition(const MyVector3& pos) {
-		m_object.transform.SetPosition(pos.x, pos.y, pos.z);
-		m_object.transform.UpdateMatrix();
-	}
-
-	GameObject& GetGameObject() { return m_object; }
+	virtual void OnCollisionEnter(std::string myCol, GameObject* other, std::string otherCol) override;
+	bool IsGrounded() const { return m_isGrounded; }
 
 private:
-	GameObject m_object; // ÉvÉåÉCÉÑÅ[ÇÃé¿ëÃ
 	float m_moveSpeed = 5.0f;
 	float m_turnSpeed = 10.0f;
+	float m_jumpPower = 5.0f;
+	float coyoteTimer = 0.0f;
+	float coyoteTime = 0.2f;
+	bool m_isGrounded = false;
 };
 

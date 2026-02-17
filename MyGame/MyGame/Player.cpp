@@ -7,14 +7,15 @@
 
 void Player::Initialize(Model* model) 
 {
-    m_object.pModel = model;
-    m_object.transform.SetScale(1.0f, 1.5f, 1.0f);
-    m_object.transform.SetPosition(0, 0.5f, 0); // ‰ŠúˆÊ’u
+    pModel = model;
+    transform.SetScale(1.0f, 1.5f, 1.0f);
+    transform.SetPosition(0, 0.5f, 0); // ‰ŠúˆÊ’u
 
-    m_object.AddCollider("body", ColliderType::AABB, {0, 0.3f, 0}, {0.8f, 1.0f, 0.8f});
-    m_object.AddCollider("head", ColliderType::AABB, { 0, 1.3f, 0 }, { 0.4f, 0.4f, 0.4f });
+    AddCollider("foot", ColliderType::AABB, { 0, 0.05f, 0 }, { 0.6f, 0.1f, 0.6f });
+    AddCollider("body", ColliderType::AABB, {0, 0.3f, 0}, {0.8f, 1.0f, 0.8f});
+    AddCollider("head", ColliderType::AABB, { 0, 1.3f, 0 }, { 0.4f, 0.4f, 0.4f });
 
-    m_object.transform.UpdateMatrix();
+    transform.UpdateMatrix();
 }
 
 void Player::Update(float dt, float camYaw)
@@ -27,7 +28,7 @@ void Player::Update(float dt, float camYaw)
     if (Input::GetKey('A')) moveX -= 1.0f;
     if (Input::GetKey('D')) moveX += 1.0f;
 
-    MyVector3 vel = m_object.GetVelocity();
+    MyVector3 vel = GetVelocity();
 
     float len = sqrtf(moveX * moveX + moveZ * moveZ);
     if (len > 0.0f)
@@ -47,9 +48,9 @@ void Player::Update(float dt, float camYaw)
         vel.z = finalMoveZ * m_moveSpeed;
 
         float targetYaw = atan2f(finalMoveX, finalMoveZ);
-        m_object.transform.SetRotation(0, targetYaw, 0);
+        transform.SetRotation(0, targetYaw, 0);
 
-        m_object.transform.UpdateMatrix();
+        transform.UpdateMatrix();
     }
     else
     {
@@ -57,10 +58,28 @@ void Player::Update(float dt, float camYaw)
         vel.z = 0.0f;
     }
 
-    m_object.SetVelocity(vel);
+    if (coyoteTimer >= 0) 
+    {
+        coyoteTimer -= dt;
+    }
+
+    if (Input::GetKey(VK_SPACE) && (m_isGrounded || coyoteTimer >= 0))
+    {
+        vel.y = m_jumpPower;
+        m_isGrounded = false;
+        coyoteTimer = -1.0f;
+    }
+
+    SetVelocity(vel);
+
+    m_isGrounded = false;
 }
-void Player::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer,
-    const MyMatrix4x4& view, const MyMatrix4x4& projection)
+
+void Player::OnCollisionEnter(std::string myCol, GameObject* other, std::string otherCol)
 {
-    m_object.Draw(context, constantBuffer, view, projection);
+    if (otherCol == "floor_main")
+    {
+        m_isGrounded = true;
+        coyoteTimer = coyoteTime;
+    }
 }

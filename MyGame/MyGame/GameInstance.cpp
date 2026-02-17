@@ -42,7 +42,7 @@ void GameInstance::Update()
 
     m_physics.Update(m_deltaTime);
 
-    m_camera.UpdateTPS(m_player.GetPosition());
+    m_camera.UpdateTPS(m_player.transform.GetPosition());
 }
 
 void GameInstance::UpdateSystem() 
@@ -164,7 +164,7 @@ void GameInstance::CreateScene()
 
     m_player.Initialize(&m_cubeModel);
 
-    m_physics.AddDynamicObject(&m_player.GetGameObject());
+    m_physics.AddDynamicObject(&m_player);
     for (auto& obj : m_terrain)
     {
         m_physics.AddStaticObject(&obj);
