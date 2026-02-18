@@ -51,5 +51,7 @@ private:
 
 	std::chrono::high_resolution_clock::time_point m_lastTime;
 	float m_deltaTime = 0.0f;
+
+	bool m_isDebugMode = false;
 };
 

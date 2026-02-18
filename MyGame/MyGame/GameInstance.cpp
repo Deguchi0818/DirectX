@@ -6,6 +6,9 @@
 #include "GeometryGenerator.h"
 #include "Input.h"
 #include "Collider.h"
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
 
 #include <d3dcompiler.h>
 #pragma comment(lib, "d3dcompiler.lib")
@@ -30,6 +33,11 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
     m_lastTime = std::chrono::high_resolution_clock::now();
 
     Input::Initialize();
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui_ImplWin32_Init(hWnd);
+    ImGui_ImplDX11_Init(m_graphics.GetDevice(), m_graphics.GetContext());
 
     return true;
 }
@@ -57,36 +65,65 @@ void GameInstance::UpdateSystem()
 
     Input::Update();
 
-    static POINT lastMousePos;
-    POINT currentMousePos;
-    GetCursorPos(&currentMousePos);
-
-    int centerX = GetSystemMetrics(SM_CXSCREEN) / 2;
-    int centerY = GetSystemMetrics(SM_CYSCREEN) / 2;
-
-    static bool firstFrame = true;
-    if (firstFrame)
+    if (Input::GetKeyDown(VK_TAB))
     {
-        // 最初のフレームでマウスを中央に飛ばす
-        SetCursorPos(centerX, centerY);
-        lastMousePos = { centerX, centerY };
-        firstFrame = false;
-        return;
+        m_isDebugMode = !m_isDebugMode;
     }
 
-    // 中央からの移動量を計算
-    float dx = (float)(currentMousePos.x - centerX);
-    float dy = (float)(currentMousePos.y - centerY);
+    ImGuiIO& io = ImGui::GetIO();
+    if (m_isDebugMode || io.WantCaptureMouse)
+    {
+        while (::ShowCursor(TRUE) < 0);
+        return;
+    }
+    else
+    {
+        while (::ShowCursor(FALSE) >= 0);
 
-    // カメラを回転させる
-    m_camera.Rotate(dx, dy);
+        static POINT lastMousePos;
+        POINT currentMousePos;
+        GetCursorPos(&currentMousePos);
 
-    // マウスを中央に戻す
-    SetCursorPos(centerX, centerY);
+        int centerX = GetSystemMetrics(SM_CXSCREEN) / 2;
+        int centerY = GetSystemMetrics(SM_CYSCREEN) / 2;
+
+        static bool firstFrame = true;
+        if (firstFrame)
+        {
+            // 最初のフレームでマウスを中央に飛ばす
+            SetCursorPos(centerX, centerY);
+            lastMousePos = { centerX, centerY };
+            firstFrame = false;
+            return;
+        }
+
+        // 中央からの移動量を計算
+        float dx = (float)(currentMousePos.x - centerX);
+        float dy = (float)(currentMousePos.y - centerY);
+
+        // カメラを回転させる
+        m_camera.Rotate(dx, dy);
+
+        // マウスを中央に戻す
+        SetCursorPos(centerX, centerY);
+    }
+    
 }
 
 void GameInstance::Render()
 {
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    // ここにデバッグメニューの内容を書く
+    ImGui::Begin("Debug Menu");
+    ImGui::Text("Player Settings");
+    // ジャンプ力や移動速度をスライダーで調整できるようにする
+    ImGui::SliderFloat("Jump Power", &m_player.GetJumpPower(), 0.0f, 20.0f);
+    ImGui::SliderFloat("Move Speed", &m_player.GetMoveSpeed(), 0.0f, 20.0f);
+    ImGui::End();
+
     // 描画開始
     m_graphics.BeginScene(0.1f, 0.2f, 0.4f, 1.0f);
 
@@ -111,6 +148,9 @@ void GameInstance::Render()
     }
 
     m_player.Draw(context, m_constantBuffer.Get(), view, proj);
+
+    ImGui::Render();
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     //描画終了
     m_graphics.EndScene();
