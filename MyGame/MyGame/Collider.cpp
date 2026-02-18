@@ -20,6 +20,23 @@ AABB ColliderComponent::GetWorldAABB(const MyVector3& parentPos, const MyVector3
     };
 }
 
+Sphere ColliderComponent::GetWorldSphere(const MyVector3& parentPos, const MyVector3& parentScale) const
+{
+    return {
+        .x = parentPos.x + offset.x * parentScale.x,
+        .y = parentPos.y + offset.y * parentScale.y,
+        .z = parentPos.z + offset.z * parentScale.z,
+        .radius = radius * parentScale.x
+    };
+}
+
+float Clamp(float n, float min, float max) 
+{
+    if (n < min) return min;
+    if (n > max) return max;
+    return n;
+}
+
 bool Collider::SphereCollider(const Sphere& a, const Sphere& b) 
 {
 	float dx = a.x - b.x;
@@ -44,4 +61,20 @@ bool Collider::AABBCollider(const AABB& a, const AABB& b)
 	if (a.max.z < b.min.z || a.min.z > b.max.z) return false;
 
 	return true;
+}
+
+bool Collider::SphereVsAABB(const Sphere& sphere, const AABB& aabb) 
+{
+    float closestX = Clamp(sphere.x, aabb.min.x, aabb.max.x);
+    float closestY = Clamp(sphere.y, aabb.min.y, aabb.max.y);
+    float closestZ = Clamp(sphere.z, aabb.min.z, aabb.max.z);
+
+    float dx = sphere.x - closestX;
+    float dy = sphere.y - closestY;
+    float dz = sphere.z - closestZ;
+
+    float distanceSq = dx * dx + dy * dy + dz * dz;
+
+    // îºåaÇÃìÒèÊÇ∆î‰är: d^2 <= r^2
+    return distanceSq <= (sphere.radius * sphere.radius);
 }

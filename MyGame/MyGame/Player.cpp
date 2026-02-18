@@ -13,7 +13,7 @@ void Player::Initialize(Model* model)
 
     AddCollider("foot", ColliderType::AABB, { 0, 0.05f, 0 }, { 0.6f, 0.1f, 0.6f });
     AddCollider("body", ColliderType::AABB, {0, 0.3f, 0}, {0.8f, 1.0f, 0.8f});
-    AddCollider("head", ColliderType::AABB, { 0, 1.3f, 0 }, { 0.4f, 0.4f, 0.4f });
+    AddCollider("head", ColliderType::Sphere, { 0, 1.3f, 0 }, { 0.4f, 0.4f, 0.4f });
 
     transform.UpdateMatrix();
 }
@@ -81,5 +81,9 @@ void Player::OnCollisionEnter(std::string myCol, GameObject* other, std::string 
     {
         m_isGrounded = true;
         coyoteTimer = coyoteTime;
+    }
+    if (myCol == "head") 
+    {
+        m_hitHead = true;
     }
 }

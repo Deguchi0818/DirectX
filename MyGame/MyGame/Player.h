@@ -16,6 +16,8 @@ public:
 
 	float& GetJumpPower(){ return m_jumpPower; }
 	float& GetMoveSpeed() { return m_moveSpeed; }
+	bool m_hitHead = false;
+
 
 private:
 	float m_moveSpeed = 5.0f;
@@ -24,5 +26,6 @@ private:
 	float coyoteTimer = 0.0f;
 	float coyoteTime = 0.2f;
 	bool m_isGrounded = false;
+
 };
 

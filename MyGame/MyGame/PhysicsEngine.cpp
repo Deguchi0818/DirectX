@@ -29,33 +29,85 @@ void PhysicsEngine::Integrate(GameObject* obj, float dt)
 
 void PhysicsEngine::ResolveCollisions()
 {
-    for (auto& a : m_dynamicObjects) 
+    for (auto& a : m_dynamicObjects)
     {
-        for (auto& b : m_staticObjects) 
+        for (auto& b : m_staticObjects)
         {
             bool isResolved = false;
-            for (const auto& colA : a->m_colliders) 
+            for (const auto& colA : a->m_colliders)
             {
-                if (isResolved) break;
-                for (const auto& colB : b->m_colliders) 
+                if (isResolved) break; // このペアの衝突が解決済みなら次のコライダーへ
+                for (const auto& colB : b->m_colliders)
                 {
-                    AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
-                    AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+                    bool collisionDetected = false;
 
-                    if (Collider::AABBCollider(worldA, worldB)) 
+                    // --- 組み合わせごとの判定ロジック ---
+
+                    // AABB vs AABB
+                    if (colA.type == ColliderType::AABB && colB.type == ColliderType::AABB)
+                    {
+                        AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
+                        AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+
+                        if (Collider::AABBCollider(worldA, worldB))
+                        {
+                            collisionDetected = true;
+                            // トリガーでなければ押し戻しを行う
+                            if (!colA.isTrigger && !colB.isTrigger) {
+                                ResolveOverlap(a, b, worldA, worldB);
+                                isResolved = true;
+                            }
+                        }
+                    }
+                    // Sphere vs Sphere
+                    else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::Sphere)
+                    {
+                        Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
+                        Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
+
+                        if (Collider::SphereCollider(worldA, worldB))
+                        {
+                            collisionDetected = true;
+                        }
+                    }
+                    // Sphere (A) vs AABB (B)
+                    else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::AABB)
+                    {
+                        Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
+                        AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+
+                        if (Collider::SphereVsAABB(worldA, worldB))
+                        {
+                            collisionDetected = true;
+                        }
+                    }
+                    // AABB (A) vs Sphere (B)
+                    else if (colA.type == ColliderType::AABB && colB.type == ColliderType::Sphere)
+                    {
+                        AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
+                        Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
+
+                        // 引数を入れ替えて SphereVsAABB を呼び出す
+                        if (Collider::SphereVsAABB(worldB, worldA))
+                        {
+                            collisionDetected = true;
+                        }
+                    }
+
+                    // --- 衝突後のイベント通知 ---
+                    if (collisionDetected)
                     {
                         if (colA.isTrigger || colB.isTrigger)
                         {
                             a->OnTriggerEnter(b);
                         }
-                        else 
+                        else
                         {
-                            ResolveOverlap(a, b, worldA, worldB);
                             a->OnCollisionEnter(colA.name, b, colB.name);
-                            isResolved = true;
-                            break;
                         }
                     }
+
+                    if (isResolved) break;
                 }
             }
         }

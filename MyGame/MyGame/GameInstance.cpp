@@ -124,6 +124,16 @@ void GameInstance::Render()
     ImGui::SliderFloat("Move Speed", &m_player.GetMoveSpeed(), 0.0f, 20.0f);
     ImGui::End();
 
+    if (m_isDebugMode) {
+        ImGui::Begin("Physics Debug");
+        if (m_player.m_hitHead) {
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "HEAD CRASH!"); // 赤文字で表示
+        }
+        // 確認が終わったらフラグを戻す処理など
+        if (ImGui::Button("Reset Flag")) m_player.m_hitHead = false;
+        ImGui::End();
+    }
+
     // 描画開始
     m_graphics.BeginScene(0.1f, 0.2f, 0.4f, 1.0f);
 
@@ -191,6 +201,15 @@ void GameInstance::CreateScene()
     wall.isStatic = true;
     wall.m_isTrigger = false;
     wall.AddCollider("wall_main", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
+    m_terrain.push_back(wall);
+
+    GameObject block;
+    wall.pModel = &m_cubeModel;
+    wall.transform.SetPosition(0.0f, 3.5f, 0.0f);
+    wall.transform.SetScale(1.0f, 1.0f, 1.0f);
+    wall.isStatic = true;
+    wall.m_isTrigger = false;
+    wall.AddCollider("block", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
     m_terrain.push_back(wall);
 
     GameObject coin;
