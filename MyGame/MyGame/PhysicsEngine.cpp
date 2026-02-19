@@ -79,6 +79,12 @@ void PhysicsEngine::ResolveCollisions()
                         if (Collider::SphereVsAABB(worldA, worldB))
                         {
                             collisionDetected = true;
+                            if (!colA.isTrigger && !colB.isTrigger)
+                            {
+                                // true ‚ð“n‚µ‚ÄAA(Sphere)‚ð‰Ÿ‚µ–ß‚·
+                                ResolveSphereAABBOverlap(a, worldA, worldB, true);
+                                isResolved = true;
+                            }
                         }
                     }
                     // AABB (A) vs Sphere (B)
@@ -87,10 +93,15 @@ void PhysicsEngine::ResolveCollisions()
                         AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
                         Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
 
-                        // ˆø”‚ð“ü‚ê‘Ö‚¦‚Ä SphereVsAABB ‚ðŒÄ‚Ño‚·
                         if (Collider::SphereVsAABB(worldB, worldA))
                         {
                             collisionDetected = true;
+                            if (!colA.isTrigger && !colB.isTrigger)
+                            {
+                                // false ‚ð“n‚µ‚ÄAA(AABB)‚ð‹t•ûŒü‚É‰Ÿ‚µ–ß‚·
+                                ResolveSphereAABBOverlap(a, worldB, worldA, false);
+                                isResolved = true;
+                            }
                         }
                     }
 
@@ -148,4 +159,44 @@ void PhysicsEngine::ResolveOverlap(GameObject* a, GameObject* b, const AABB& box
     a->SetVelocity(vel); // C³‚µ‚½‘¬“x‚ð”½‰f
     a->transform.SetPosition(pos.x, pos.y, pos.z);
     a->transform.UpdateMatrix();
+}
+
+void PhysicsEngine::ResolveSphereAABBOverlap(GameObject* moveObj, const Sphere& s, const AABB& b, bool isSphereMove)
+{
+    float closestX = std::clamp(s.x, b.min.x, b.max.x);
+    float closestY = std::clamp(s.y, b.min.y, b.max.y);
+    float closestZ = std::clamp(s.z, b.min.z, b.max.z);
+
+    float dx = s.x - closestX;
+    float dy = s.y - closestY;
+    float dz = s.z - closestZ;
+
+    float dist = sqrtf(dx * dx + dy * dy + dz * dz);
+    if (dist < 0.0001f) return;
+
+    float overlap = s.radius - dist;
+    if (overlap <= 0) return;
+
+    // •ûŒü‚ðŒˆ’èiSphere‚ð“®‚©‚·‚È‚ç‚»‚Ì‚Ü‚ÜAAABB‚ð“®‚©‚·‚È‚ç‹tŒü‚«j
+    float normalX = dx / dist * (isSphereMove ? 1.0f : -1.0f);
+    float normalY = dy / dist * (isSphereMove ? 1.0f : -1.0f);
+    float normalZ = dz / dist * (isSphereMove ? 1.0f : -1.0f);
+
+    MyVector3 pos = moveObj->transform.GetPosition();
+    pos.x += normalX * overlap;
+    pos.y += normalY * overlap;
+    pos.z += normalZ * overlap;
+
+    moveObj->transform.SetPosition(pos.x, pos.y, pos.z);
+    moveObj->transform.UpdateMatrix();
+
+    // ‘¬“x‚ðC³F‰Ÿ‚µ–ß‚µ‚½•ûŒü‚Ì‘¬“x¬•ª‚ðÁ‚·
+    MyVector3 vel = moveObj->GetVelocity();
+    if (std::abs(normalX) > 0.5f) vel.x = 0;
+    if (std::abs(normalY) > 0.5f) 
+    {
+        if (normalY > 0) vel.y = 0; // °‚È‚ç‰ºŒü‚«‘¬“x‚ðÁ‚·
+    }
+    if (std::abs(normalZ) > 0.5f) vel.z = 0;
+    moveObj->SetVelocity(vel);
 }

@@ -218,7 +218,7 @@ void GameInstance::CreateScene()
     coin.transform.SetScale(0.5f, 0.5f, 0.5f);
     coin.isStatic = true;
     coin.m_isTrigger = true;
-    coin.AddCollider("coin_trigger", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f }, true);
+    coin.AddCollider("coin", ColliderType::Sphere, { 0,0,0 }, { 0,0,0 }, 0.5f, true);
     m_gameObjects.push_back(coin);
 
     m_player.Initialize(&m_cubeModel);

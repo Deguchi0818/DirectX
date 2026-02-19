@@ -25,5 +25,7 @@ private:
     void ResolveCollisions();
 
     void ResolveOverlap(GameObject* a, GameObject* b, const AABB& boxA, const AABB& boxB);
+
+    void ResolveSphereAABBOverlap(GameObject* sphereObj, const Sphere& s, const AABB& b, bool isSphereMove);
 };
 
