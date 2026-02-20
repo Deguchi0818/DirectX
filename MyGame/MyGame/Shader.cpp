@@ -17,19 +17,35 @@ bool Shader::Load(ID3D11Device* device, const wchar_t* vsFile, const wchar_t* ps
 
     // 入力レイアウトの作成
     D3D11_INPUT_ELEMENT_DESC layout[] = {
-     { "POSITION",     0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-     { "COLOR",        0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-     { "BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_UINT,  0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-     { "BLENDWEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "POSITION",     0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "COLOR",        0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD",     0, DXGI_FORMAT_R32G32_FLOAT,       0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "NORMAL",       0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // ★ここが 36 バイト目になる
+        { "BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_UINT,  0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "BLENDWEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
     device->CreateInputLayout(layout, ARRAYSIZE(layout), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &m_inputLayout);
 
+    D3D11_BUFFER_DESC bbd = {};
+    bbd.ByteWidth = sizeof(BoneBuffer);
+    bbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    bbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    bbd.Usage = D3D11_USAGE_DYNAMIC;
 
-    D3D11_BUFFER_DESC bd = {};
-    bd.Usage = D3D11_USAGE_DYNAMIC;              // 毎フレーム更新するので DYNAMIC
-    bd.ByteWidth = sizeof(DirectX::XMMATRIX) * 128; // 行列128個分
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    device->CreateBuffer(&bbd, nullptr, &m_boneBuffer);
+
+    D3D11_SAMPLER_DESC sd = {};
+    sd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR; // 線形補間
+    sd.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;    // 繰り返しOK
+    sd.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    sd.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    sd.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    sd.MinLOD = 0;
+    sd.MaxLOD = D3D11_FLOAT32_MAX;
+
+    // サンプラーを作成
+    hr = device->CreateSamplerState(&sd, &m_samplerState);
+    if (FAILED(hr)) return false;
 
     // ピクセルシェーダーのコンパイル
     hr = D3DCompileFromFile(psFile, nullptr, nullptr, "main", "ps_5_0", 0, 0, &psBlob, &errorBlob);
@@ -45,6 +61,8 @@ void Shader::Bind(ID3D11DeviceContext* context) {
     context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
     context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
     context->VSSetConstantBuffers(1, 1, m_boneBuffer.GetAddressOf());
+
+    context->PSSetSamplers(0, 1, m_samplerState.GetAddressOf());
 }
 
 void Shader::UpdateBones(ID3D11DeviceContext* context, const std::vector<DirectX::XMMATRIX>& matrices) {

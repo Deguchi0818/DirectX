@@ -14,6 +14,8 @@
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
 
+#include <WICTextureLoader.h>
+
 using Microsoft::WRL::ComPtr;
 
 GameInstance::GameInstance() {};
@@ -21,6 +23,8 @@ GameInstance::~GameInstance() { Finalize(); }
 
 bool GameInstance::Initialize(HWND hWnd, int width, int height) 
 {
+    HRESULT hr_com = CoInitializeEx(NULL, 0);
+
     if (!m_graphics.Initialize(hWnd, width, height)) return false;
     auto device = m_graphics.GetDevice();
 
@@ -38,6 +42,20 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
     ImGui::CreateContext();
     ImGui_ImplWin32_Init(hWnd);
     ImGui_ImplDX11_Init(m_graphics.GetDevice(), m_graphics.GetContext());
+
+    D3D11_BLEND_DESC bd = {};
+    bd.RenderTarget[0].BlendEnable = TRUE;
+    bd.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    bd.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    bd.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+    bd.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+    bd.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+    bd.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    bd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    Microsoft::WRL::ComPtr<ID3D11BlendState> pBlendState;
+    device->CreateBlendState(&bd, &pBlendState);
+    m_graphics.GetContext()->OMSetBlendState(pBlendState.Get(), nullptr, 0xffffffff);
 
     return true;
 }
@@ -170,6 +188,24 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 {
     if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
 
+    if (!myModel.LoadFromFile(device, "C:/Users/PC_User/Documents/DirectX/MyGame/MyGame/Asset/test2/test.pmx")) 
+    {
+        MessageBox(nullptr, L"PMXの読み込みに失敗しました。パスを確認してください。", L"Error", MB_OK);
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> toonSRV;
+    HRESULT hr = DirectX::CreateWICTextureFromFile(device, L"Asset/test/toon.png", nullptr, &toonSRV);
+
+    if (SUCCEEDED(hr)) {
+        myModel.SetToonTexture(toonSRV);       // 蛍ちゃん
+        m_cubeModel.SetToonTexture(toonSRV);   // 立方体
+        m_planeModel.SetToonTexture(toonSRV);  // 地面
+        m_playerModel.SetToonTexture(toonSRV);  // 地面
+    }
+
+    myModel.SetToonTexture(toonSRV);
+
     m_cubeModel.CreateCube(device, 1.0f, { 0.0f, 0.5f, 1.0f, 1.0f });
     m_playerModel.CreateCube(device, 1.0f, { 0.5f, 0.0f, 0.0f, 1.0f });
     m_planeModel.CreatePlane(device, 1.0f, 1.0f, { 0.0f, 0.5f, 0.0f, 1.0f });
@@ -190,14 +226,14 @@ void GameInstance::CreateScene()
     GameObject floor;
     floor.pModel = &m_planeModel;
     floor.transform.SetPosition(0, 0, 0);
-    floor.transform.SetScale(10.0f, 1.0f, 10.0f);
+    floor.transform.SetScale(50.0f, 1.0f, 50.0f);
     floor.isStatic = true;
-    floor.AddCollider("floor_main", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
+    floor.AddCollider("floor_main", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 0.01f, 1.0f });
     m_terrain.push_back(floor);
 
     GameObject wall;
     wall.pModel = &m_cubeModel;
-    wall.transform.SetPosition(5.0f, 0.5f, 0.0f);
+    wall.transform.SetPosition(5.0f, 1.0f, 0.0f);
     wall.transform.SetScale(1.0f, 2.0f, 5.0f);
     wall.isStatic = true;
     wall.m_isTrigger = false;
@@ -206,7 +242,7 @@ void GameInstance::CreateScene()
 
     GameObject block;
     wall.pModel = &m_cubeModel;
-    wall.transform.SetPosition(0.0f, 3.5f, 0.0f);
+    wall.transform.SetPosition(6.0f, 3.5f, 0.0f);
     wall.transform.SetScale(1.0f, 1.0f, 1.0f);
     wall.isStatic = true;
     wall.m_isTrigger = false;
@@ -222,7 +258,14 @@ void GameInstance::CreateScene()
     coin.AddCollider("coin", ColliderType::Sphere, { 0,0,0 }, { 0,0,0 }, 0.5f, true);
     m_gameObjects.push_back(coin);
 
-    m_player.Initialize(&m_playerModel);
+    GameObject character;
+    character.pModel = &myModel; // さきほど読み込んだモデルをセット
+    character.transform.SetPosition(0.0f, 0.0f, 0.0f); // 座標を設定
+    character.transform.SetScale(0.3f, 0.3f, 0.3f);    // サイズを調整
+
+    m_gameObjects.push_back(character);
+
+    m_player.Initialize(&myModel);
 
     m_physics.AddDynamicObject(&m_player);
     for (auto& obj : m_terrain)
@@ -239,5 +282,5 @@ void GameInstance::CreateScene()
 
 void GameInstance::Finalize() 
 {
-
+    CoUninitialize();
 }

@@ -36,6 +36,14 @@ bool Graphics::Initialize(HWND hWnd, int width, int height) {
     D3D11_VIEWPORT vp{ 0, 0, (float)width, (float)height, 0.0f, 1.0f };
     m_context->RSSetViewports(1, &vp);
 
+    D3D11_RASTERIZER_DESC rd = {};
+    rd.FillMode = D3D11_FILL_SOLID;
+    rd.CullMode = D3D11_CULL_NONE;
+
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> rs;
+    m_device->CreateRasterizerState(&rd, &rs);
+    m_context->RSSetState(rs.Get());
+
     return true;
 }
 

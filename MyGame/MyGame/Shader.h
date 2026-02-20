@@ -20,5 +20,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>      m_inputLayout;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>     m_vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>      m_pixelShader;
-	Microsoft::WRL::ComPtr<ID3D11Buffer> m_boneBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>			m_boneBuffer;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState>		m_samplerState;
 };

@@ -7,6 +7,9 @@
 struct Vertex {
     float x, y, z;
     float r, g, b, a;
+    // テクスチャの座標 (UV座標)
+    float u, v;
+    float nx, ny, nz;
     unsigned int BoneIndices[4];
     float BoneWeights[4];
 
