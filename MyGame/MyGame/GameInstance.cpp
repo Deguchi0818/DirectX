@@ -171,6 +171,7 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
     if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
 
     m_cubeModel.CreateCube(device, 1.0f, { 0.0f, 0.5f, 1.0f, 1.0f });
+    m_playerModel.CreateCube(device, 1.0f, { 0.5f, 0.0f, 0.0f, 1.0f });
     m_planeModel.CreatePlane(device, 1.0f, 1.0f, { 0.0f, 0.5f, 0.0f, 1.0f });
 
     // 定数バッファ作成
@@ -221,7 +222,7 @@ void GameInstance::CreateScene()
     coin.AddCollider("coin", ColliderType::Sphere, { 0,0,0 }, { 0,0,0 }, 0.5f, true);
     m_gameObjects.push_back(coin);
 
-    m_player.Initialize(&m_cubeModel);
+    m_player.Initialize(&m_playerModel);
 
     m_physics.AddDynamicObject(&m_player);
     for (auto& obj : m_terrain)

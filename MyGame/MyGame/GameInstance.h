@@ -42,6 +42,7 @@ private:
 
 	Model m_cubeModel;
 	Model m_planeModel;
+	Model m_playerModel;
 
 	Graphics m_graphics;
 	Shader m_baseShader;

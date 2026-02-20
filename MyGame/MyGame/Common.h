@@ -7,6 +7,9 @@
 struct Vertex {
     float x, y, z;
     float r, g, b, a;
+    unsigned int BoneIndices[4];
+    float BoneWeights[4];
+
 };
 
 // 定数バッファの構造
