@@ -5,36 +5,34 @@ SamplerState samp : register(s0);
 struct PS_INPUT
 {
     float4 pos : SV_POSITION;
-    float4 color : COLOR;
-    float2 uv : TEXCOORD;
-    float3 normal : NORMAL;
+    float4 color : COLOR; // 2. 頂点色
+    float2 uv : TEXCOORD; // 3. UV
+    float3 normal : NORMAL; // 4. 法線
 };
 
 float4 main(PS_INPUT input) : SV_TARGET
 {
-    // テクスチャから色をサンプリング
     float4 texColor = tex.Sample(samp, input.uv);
-
     float4 baseColor;
-    if (texColor.a < 0.001f && length(texColor.rgb) < 0.001f)
+
+    // テクスチャがある場所はテクスチャ、ない場所は頂点色（input.color）
+    if (texColor.a < 0.01f)
     {
         baseColor = input.color;
     }
     else
     {
         baseColor = texColor;
-        clip(baseColor.a - 0.1f);
+        // ★ 修正：透明になりすぎるのを防ぐため、clipを無効化するか値を下げる
+        clip(baseColor.a - 0.05f); 
     }
 
     // 影の計算
     float3 lightDir = normalize(float3(1, -1, 1));
     float diffuse = dot(normalize(input.normal), -lightDir);
-    
-    // 影パレット(toon.png)から色を拾う
-    // diffuseを0.0～1.0の範囲にして、トゥーンテクスチャをサンプリング
     float2 toonUV = float2(0.5f, 1.0f - (diffuse * 0.5f + 0.5f));
     float4 shadowFactor = toon.Sample(samp, toonUV);
 
-    // 最終的な色を出力
-    return baseColor * shadowFactor;
+    // ★ 修正：影を計算しつつ、暗くなりすぎないように最低限の明るさを保証（0.5f + ...）
+    return baseColor * (shadowFactor * 0.5f + 0.5f);
 }

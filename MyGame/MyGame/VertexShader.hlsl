@@ -14,8 +14,8 @@ struct VS_INPUT
     float4 color : COLOR;
     float2 uv : TEXCOORD;
     float3 normal : NORMAL;
-    uint4 indices : BLENDINDICES;
-    float4 weights : BLENDWEIGHTS;
+    //uint4 indices : BLENDINDICES;
+    //float4 weights : BLENDWEIGHTS;
 };
 
 struct VS_OUTPUT
