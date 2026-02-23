@@ -26,6 +26,18 @@ std::wstring SJISToWide(const std::string& sjis) {
     return wide;
 }
 
+std::wstring UTF8ToWide(const std::string& utf8) {
+    if (utf8.empty()) return L"";
+    int size = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+    if (size <= 0) return L"";
+    std::wstring wide(size, 0);
+    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], size);
+    size_t pos = wide.find(L'\0');
+    if (pos != std::wstring::npos) wide.resize(pos);
+    return wide;
+}
+
+
 std::string ToHexString(const std::string& s) {
     std::ostringstream oss;
     for (unsigned char c : s) oss << std::hex << std::setw(2) << std::setfill('0') << (int)c << " ";
@@ -73,21 +85,18 @@ void Model::CreatePlane(ID3D11Device* device, float width, float depth, const My
     m_subsets.push_back(s);
 }
 
-void Model::Draw(ID3D11DeviceContext* context)
-{
+void Model::Draw(ID3D11DeviceContext* context) {
     m_mesh.BindBuffers(context);
-
     if (m_toonTexture) {
         context->PSSetShaderResources(1, 1, m_toonTexture.GetAddressOf());
     }
+    for (const auto& subset : m_subsets) {
 
-    for (const auto& subset : m_subsets)
-    {
         ID3D11ShaderResourceView* srv = subset.textureView.Get();
-        context->PSSetShaderResources(0, 1, subset.textureView.GetAddressOf());
+        context->PSSetShaderResources(0, 1, &srv);
+
         context->DrawIndexed(subset.indexCount, subset.startIndex, 0);
     }
-
     // 描き終わったらリセット
     ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
     context->PSSetShaderResources(0, 2, nullSRVs);
@@ -109,80 +118,84 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> texView = nullptr;
 
         if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
-            std::string rawName = texPath.C_Str();
+            std::string raw = texPath.C_Str();
+            std::wstring wideUTF8 = UTF8ToWide(raw);
+            std::wstring wideSJIS = SJISToWide(raw);
 
-            // --- デバッグ：ここから ---
-            // ログに「生データ（16進数）」を出すことで、本当の正体が見えます
-            OutputDebugStringA(("RawBytes: " + ToHexString(rawName) + "\n").c_str());
-            // --- デバッグ：ここまで ---
-
-            // 1. Shift-JISとして変換
-            std::wstring decodedName = SJISToWide(rawName);
-            // 2. UTF-8として変換（Assimpが変換済みの場合の対策）
-            std::wstring utf8Name = L"";
-            int uSize = MultiByteToWideChar(CP_UTF8, 0, rawName.c_str(), -1, nullptr, 0);
-            if (uSize > 0) {
-                utf8Name.resize(uSize);
-                MultiByteToWideChar(CP_UTF8, 0, rawName.c_str(), -1, &utf8Name[0], uSize);
-                size_t p = utf8Name.find(L'\0'); if (p != std::wstring::npos) utf8Name.resize(p);
-            }
-
-            // 検索するファイル名の候補
-            std::vector<std::wstring> nameCandidates = {
-                fs::path(decodedName).filename().wstring(), // 本命
-                fs::path(utf8Name).filename().wstring(),    // 予備1
-                fs::path(SJISToWide(rawName)).wstring()     // 予備2（フルパス）
-            };
+            // 検索候補の名前を抽出 (例: "Texture\眼球.bmp" -> "眼球")
+            std::wstring stemUTF8 = fs::path(wideUTF8).stem().wstring();
+            std::wstring stemSJIS = fs::path(wideSJIS).stem().wstring();
 
             bool found = false;
-            for (const auto& targetName : nameCandidates) {
-                if (targetName.empty()) continue;
+            std::error_code ec;
 
-                std::error_code ec;
-                for (const auto& entry : fs::directory_iterator(modelDir, ec)) {
+            //
+            if (fs::exists(modelDir, ec)) {
+                for (const auto& entry : fs::recursive_directory_iterator(modelDir, ec)) {
                     if (!entry.is_regular_file()) continue;
 
-                    std::wstring diskName = entry.path().stem().wstring();
-                    // 名前が一致（部分一致含む）したら採用
-                    if (diskName.find(targetName) != std::wstring::npos || targetName.find(diskName) != std::wstring::npos) {
+                    std::wstring diskStem = entry.path().stem().wstring();
+                    std::wstring diskFull = entry.path().filename().wstring();
+
+
+                    if (diskFull == wideUTF8 || diskFull == wideSJIS ||
+                        diskStem == stemUTF8 || diskStem == stemSJIS)
+                    {
                         DirectX::CreateWICTextureFromFile(device, entry.path().c_str(), nullptr, &texView);
                         if (texView) { found = true; break; }
                     }
                 }
-                if (found) break;
+            }
+
+            if (!texView) {
+                OutputDebugStringW((L"【失敗】テクスチャが見つかりません: " + wideSJIS + L"\n").c_str());
             }
         }
         textures.push_back(texView);
     }
 
-    // --- メッシュ読み込み（変更なし） ---
+    // --- メッシュ読み込み処理（提示されたループ構造のまま、オフセット処理を維持） ---
     std::vector<Vertex> allVertices;
     std::vector<unsigned int> allIndices;
     unsigned int vertexOffset = 0;
+
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
+        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
+        aiColor4D diffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
+        material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+
         Subset subset = { (unsigned int)allIndices.size(), mesh->mNumFaces * 3, nullptr };
-        if (mesh->mMaterialIndex < textures.size()) subset.textureView = textures[mesh->mMaterialIndex];
+        if (mesh->mMaterialIndex < (unsigned int)textures.size()) {
+            subset.textureView = textures[mesh->mMaterialIndex];
+        }
 
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex v = {};
             v.x = mesh->mVertices[i].x; v.y = mesh->mVertices[i].y; v.z = mesh->mVertices[i].z;
-            v.r = 1.0f; v.g = 1.0f; v.b = 1.0f; v.a = 1.0f;
+            v.r = diffuseColor.r; v.g = diffuseColor.g; v.b = diffuseColor.b; v.a = diffuseColor.a;
+
             if (mesh->HasNormals()) {
                 v.nx = mesh->mNormals[i].x; v.ny = mesh->mNormals[i].y; v.nz = mesh->mNormals[i].z;
             }
             if (mesh->HasTextureCoords(0)) {
-                v.u = mesh->mTextureCoords[0][i].x;
-                v.v = mesh->mTextureCoords[0][i].y;
+                v.u = mesh->mTextureCoords[0][i].x; v.v = mesh->mTextureCoords[0][i].y;
             }
             allVertices.push_back(v);
         }
+
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-            for (unsigned int j = 0; j < 3; j++) allIndices.push_back(mesh->mFaces[i].mIndices[j] + vertexOffset);
+            for (unsigned int j = 0; j < 3; j++) {
+                allIndices.push_back(mesh->mFaces[i].mIndices[j] + vertexOffset);
+            }
         }
         vertexOffset = (unsigned int)allVertices.size();
         m_subsets.push_back(subset);
     }
+
+    if (allVertices.empty() || allIndices.empty()) return false;
     m_mesh.Create(device, allVertices.data(), (int)allVertices.size(), allIndices.data(), (int)allIndices.size());
+
     return true;
 }

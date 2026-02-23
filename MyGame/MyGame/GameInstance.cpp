@@ -198,7 +198,7 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
     HRESULT hr = DirectX::CreateWICTextureFromFile(device, L"Asset/test/toon.png", nullptr, &toonSRV);
 
     if (SUCCEEDED(hr)) {
-        myModel.SetToonTexture(toonSRV);       // Œu‚¿‚á‚ñ
+        myModel.SetToonTexture(toonSRV);
         m_cubeModel.SetToonTexture(toonSRV);   // —§•û‘Ì
         m_planeModel.SetToonTexture(toonSRV);  // ’n–Ê
         m_playerModel.SetToonTexture(toonSRV);  // ’n–Ê

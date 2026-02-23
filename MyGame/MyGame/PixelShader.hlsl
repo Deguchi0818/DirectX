@@ -12,28 +12,29 @@ struct PS_INPUT
 
 float4 main(PS_INPUT input) : SV_TARGET
 {
-    // 1. 基本の色を決定する
-    float4 baseColor = tex.Sample(samp, input.uv);
+    // テクスチャから色をサンプリング
+    float4 texColor = tex.Sample(samp, input.uv);
 
-    // 画像が貼られていない（アルファ値がほぼ0）パーツは、地面などの頂点色を使う
-    if (baseColor.a < 0.1f)
+    float4 baseColor;
+    if (texColor.a < 0.001f && length(texColor.rgb) < 0.001f)
     {
         baseColor = input.color;
     }
     else
     {
-        // キャラクターなどの画像があるパーツだけ、端っこを綺麗にするために切り抜く
-        clip(baseColor.a - 0.05f);
+        baseColor = texColor;
+        clip(baseColor.a - 0.1f);
     }
 
-    // 2. 影の計算
+    // 影の計算
     float3 lightDir = normalize(float3(1, -1, 1));
     float diffuse = dot(normalize(input.normal), -lightDir);
     
     // 影パレット(toon.png)から色を拾う
+    // diffuseを0.0～1.0の範囲にして、トゥーンテクスチャをサンプリング
     float2 toonUV = float2(0.5f, 1.0f - (diffuse * 0.5f + 0.5f));
     float4 shadowFactor = toon.Sample(samp, toonUV);
 
-    // 3. 最終的な色を出力（基本色 × 影の濃さ）
+    // 最終的な色を出力
     return baseColor * shadowFactor;
 }
