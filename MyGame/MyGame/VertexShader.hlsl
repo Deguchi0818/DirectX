@@ -26,10 +26,10 @@ struct VS_OUTPUT
     float3 normal : NORMAL;
 };
 
-cbuffer ConstantBuffer : register(b0)
-{
-    matrix worldViewProj;
-}
+//cbuffer ConstantBuffer : register(b0)
+//{
+//    matrix worldViewProj;
+//}
 
 VS_OUTPUT main(VS_INPUT input)
 {

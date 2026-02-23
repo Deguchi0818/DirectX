@@ -140,7 +140,7 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
         textures.push_back(texView);
     }
 
-    // --- メッシュ読み込み処理（ここを厳密に直します） ---
+    // --- メッシュ読み込み処理 ---
     std::vector<Vertex> allVertices;
     std::vector<unsigned int> allIndices;
     unsigned int vertexOffset = 0;
@@ -150,39 +150,22 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
         aiColor4D diff(1, 1, 1, 1);
         scene->mMaterials[mesh->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, diff);
 
-        // ★ 修正2：【重要】順番を Model.h の Subset 構造体に合わせます
-        // { 描く数, 開始位置, テクスチャ } の順です
-        Subset subset = { mesh->mNumFaces * 3, (unsigned int)allIndices.size(), nullptr };
+        Subset subset = { (unsigned int)mesh->mNumFaces * 3, (unsigned int)allIndices.size(), nullptr };
         if (mesh->mMaterialIndex < (unsigned int)textures.size()) subset.textureView = textures[mesh->mMaterialIndex];
 
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex v = {};
-
-            // 1. 座標 (OFFSET: 0)
-            v.x = mesh->mVertices[i].x;
-            v.y = mesh->mVertices[i].y;
-            v.z = mesh->mVertices[i].z;
-
-            // 2. 頂点色 (OFFSET: 12) ★順番を入れ替え
-            v.r = diff.r; v.g = diff.g; v.b = diff.b; v.a = diff.a;
-
-            // 3. テクスチャ座標 (OFFSET: 28)
-            if (mesh->HasTextureCoords(0)) {
-                v.u = mesh->mTextureCoords[0][i].x;
-                v.v = mesh->mTextureCoords[0][i].y;
-            }
-
-            // 4. 法線 (OFFSET: 36) ★順番を入れ替え
-            if (mesh->HasNormals()) {
-                v.nx = mesh->mNormals[i].x;
-                v.ny = mesh->mNormals[i].y;
-                v.nz = mesh->mNormals[i].z;
-            }
-
+            v.x = mesh->mVertices[i].x; v.y = mesh->mVertices[i].y; v.z = mesh->mVertices[i].z;
+            v.r = diff.r; v.g = diff.g; v.b = diff.b; v.a = diff.a; // 2. 色
+            if (mesh->HasTextureCoords(0)) { v.u = mesh->mTextureCoords[0][i].x; v.v = mesh->mTextureCoords[0][i].y; } // 3. UV
+            if (mesh->HasNormals()) { v.nx = mesh->mNormals[i].x; v.ny = mesh->mNormals[i].y; v.nz = mesh->mNormals[i].z; } // 4. 法線
             allVertices.push_back(v);
         }
+
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-            for (unsigned int j = 0; j < 3; j++) allIndices.push_back(mesh->mFaces[i].mIndices[j] + vertexOffset);
+            for (unsigned int j = 0; j < 3; j++) {
+                allIndices.push_back(mesh->mFaces[i].mIndices[j] + vertexOffset);
+            }
         }
         vertexOffset = (unsigned int)allVertices.size();
         m_subsets.push_back(subset);

@@ -23,7 +23,6 @@ float4 main(PS_INPUT input) : SV_TARGET
     else
     {
         baseColor = texColor;
-        // ★ 修正：透明になりすぎるのを防ぐため、clipを無効化するか値を下げる
         clip(baseColor.a - 0.05f); 
     }
 
@@ -33,6 +32,5 @@ float4 main(PS_INPUT input) : SV_TARGET
     float2 toonUV = float2(0.5f, 1.0f - (diffuse * 0.5f + 0.5f));
     float4 shadowFactor = toon.Sample(samp, toonUV);
 
-    // ★ 修正：影を計算しつつ、暗くなりすぎないように最低限の明るさを保証（0.5f + ...）
     return baseColor * (shadowFactor * 0.5f + 0.5f);
 }

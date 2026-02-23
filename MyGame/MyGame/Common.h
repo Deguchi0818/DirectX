@@ -5,10 +5,10 @@
 
 // 頂点の構造
 struct Vertex {
-    float x, y, z;    // 1. 座標 (12B)
-    float nx, ny, nz; // 2. 法線 (12B)
-    float u, v;       // 3. UV (8B)
-    float r, g, b, a; // 4. 頂点色 (16B)
+    float x, y, z;    // 1. 座標 (12バイト)
+    float r, g, b, a; // 2. 色 (16バイト)
+    float u, v;       // 3. UV (8バイト)
+    float nx, ny, nz; // 4. 法線 (12バイト)
     unsigned int BoneIndices[4];
     float BoneWeights[4];
 
