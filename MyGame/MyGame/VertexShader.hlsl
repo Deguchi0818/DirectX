@@ -10,9 +10,9 @@ cbuffer BoneBuffer : register(b1)
 
 struct VS_INPUT
 {
-    float3 pos : POSITION;
-    float4 color : COLOR;
-    float2 uv : TEXCOORD;
+    float3 pos : POSITION;   // 1. À•W
+    float4 color : COLOR;    // 2. F š‚±‚±‚ÉˆÚ“®
+    float2 uv : TEXCOORD;    // 3. UV š‚±‚±‚ÉˆÚ“®
     float3 normal : NORMAL;
     //uint4 indices : BLENDINDICES;
     //float4 weights : BLENDWEIGHTS;

@@ -6,9 +6,9 @@
 // 頂点の構造
 struct Vertex {
     float x, y, z;    // 1. 座標 (12バイト)
-    float r, g, b, a; // 2. 色 (16バイト)
-    float u, v;       // 3. UV (8バイト)
-    float nx, ny, nz; // 4. 法線 (12バイト)
+    float r, g, b, a; // 2. 色 (16バイト) ★ここに移動
+    float u, v;       // 3. UV (8バイト) ★ここに移動
+    float nx, ny, nz; // 4. 法線 (12バイト) ★ここに移動
     unsigned int BoneIndices[4];
     float BoneWeights[4];
 

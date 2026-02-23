@@ -43,6 +43,14 @@ bool Shader::Load(ID3D11Device* device, const wchar_t* vsFile, const wchar_t* ps
     sd.MinLOD = 0;
     sd.MaxLOD = D3D11_FLOAT32_MAX;
 
+    D3D11_DEPTH_STENCIL_DESC dsd = {};
+    dsd.DepthEnable = TRUE;               // 深度テストを有効にする
+    dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    dsd.DepthFunc = D3D11_COMPARISON_LESS;
+
+    hr = device->CreateDepthStencilState(&dsd, &m_depthStencilState);
+    if (FAILED(hr)) return false;
+
     // サンプラーを作成
     hr = device->CreateSamplerState(&sd, &m_samplerState);
     if (FAILED(hr)) return false;
@@ -61,10 +69,10 @@ void Shader::Bind(ID3D11DeviceContext* context) {
     context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
     context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
     context->VSSetConstantBuffers(1, 1, m_boneBuffer.GetAddressOf());
-
     context->PSSetSamplers(0, 1, m_samplerState.GetAddressOf());
-}
 
+    context->OMSetDepthStencilState(m_depthStencilState.Get(), 1);
+}
 void Shader::UpdateBones(ID3D11DeviceContext* context, const std::vector<DirectX::XMMATRIX>& matrices) {
     if (matrices.empty()) return;
 

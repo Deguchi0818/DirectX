@@ -109,30 +109,43 @@ void Model::Draw(ID3D11DeviceContext* context) {
 
 bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
     Assimp::Importer importer;
-    // ★ 修正1：DirectX標準の変換フラグに戻します
+    // ★ 修正：法線がないモデルのために自動生成フラグを追加
     const aiScene* scene = importer.ReadFile(filename,
-        aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_ConvertToLeftHanded);
+        aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_ConvertToLeftHanded | aiProcess_GenSmoothNormals);
+
     if (!scene || !scene->mRootNode) return false;
 
-    // --- テクスチャ検索（ここはログで成功が確認できている今のロジックを維持） ---
     std::vector<Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> textures;
     fs::path modelDir = fs::path(filename).parent_path();
+
     for (unsigned int i = 0; i < scene->mNumMaterials; i++) {
         aiMaterial* material = scene->mMaterials[i];
         aiString texPath;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> texView = nullptr;
+
         if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
-            std::string raw = texPath.C_Str();
-            std::wstring nameU8 = fs::path(UTF8ToWide(raw)).filename().wstring();
-            std::wstring nameSJIS = fs::path(SJISToWide(raw)).filename().wstring();
-            std::error_code ec;
-            if (fs::exists(modelDir, ec)) {
+            std::string rawPath = texPath.C_Str();
+            std::wstring targetFileName = fs::path(UTF8ToWide(rawPath)).filename().wstring();
+            std::wstring targetFileNameSJIS = fs::path(SJISToWide(rawPath)).filename().wstring();
+
+            // ★ 改善：まずは Assimp が指定したパスをそのまま試す
+            fs::path directPath = modelDir / UTF8ToWide(rawPath);
+            if (!fs::exists(directPath)) directPath = modelDir / SJISToWide(rawPath);
+
+            if (fs::exists(directPath)) {
+                DirectX::CreateWICTextureFromFile(device, directPath.c_str(), nullptr, &texView);
+            }
+
+            // 見つからない場合のみ再帰検索を行う（test3 対策）
+            if (!texView) {
+                std::error_code ec;
                 for (const auto& entry : fs::recursive_directory_iterator(modelDir, ec)) {
                     if (!entry.is_regular_file()) continue;
                     std::wstring diskName = entry.path().filename().wstring();
-                    if (_wcsicmp(diskName.c_str(), nameU8.c_str()) == 0 || _wcsicmp(diskName.c_str(), nameSJIS.c_str()) == 0) {
+                    if (_wcsicmp(diskName.c_str(), targetFileName.c_str()) == 0 ||
+                        _wcsicmp(diskName.c_str(), targetFileNameSJIS.c_str()) == 0) {
                         DirectX::CreateWICTextureFromFile(device, entry.path().c_str(), nullptr, &texView);
-                        break;
+                        if (texView) break;
                     }
                 }
             }
@@ -140,33 +153,39 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
         textures.push_back(texView);
     }
 
-    // --- メッシュ読み込み処理 ---
     std::vector<Vertex> allVertices;
     std::vector<unsigned int> allIndices;
     unsigned int vertexOffset = 0;
 
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
+
+        // テクスチャがある場合は頂点色を白にして濁りを防ぐ
         aiColor4D diff(1, 1, 1, 1);
-        scene->mMaterials[mesh->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, diff);
+        if (mesh->mMaterialIndex < textures.size() && !textures[mesh->mMaterialIndex]) {
+            scene->mMaterials[mesh->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, diff);
+        }
 
         Subset subset = { (unsigned int)mesh->mNumFaces * 3, (unsigned int)allIndices.size(), nullptr };
         if (mesh->mMaterialIndex < (unsigned int)textures.size()) subset.textureView = textures[mesh->mMaterialIndex];
 
+        // ★ 修正：頂点ループは必ず「1回」にする！
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex v = {};
             v.x = mesh->mVertices[i].x; v.y = mesh->mVertices[i].y; v.z = mesh->mVertices[i].z;
-            v.r = diff.r; v.g = diff.g; v.b = diff.b; v.a = diff.a; // 2. 色
-            if (mesh->HasTextureCoords(0)) { v.u = mesh->mTextureCoords[0][i].x; v.v = mesh->mTextureCoords[0][i].y; } // 3. UV
-            if (mesh->HasNormals()) { v.nx = mesh->mNormals[i].x; v.ny = mesh->mNormals[i].y; v.nz = mesh->mNormals[i].z; } // 4. 法線
+            v.r = diff.r; v.g = diff.g; v.b = diff.b; v.a = diff.a;
+            if (mesh->HasTextureCoords(0)) { v.u = mesh->mTextureCoords[0][i].x; v.v = mesh->mTextureCoords[0][i].y; }
+            if (mesh->HasNormals()) { v.nx = mesh->mNormals[i].x; v.ny = mesh->mNormals[i].y; v.nz = mesh->mNormals[i].z; }
             allVertices.push_back(v);
         }
 
+        // インデックスの追加
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
             for (unsigned int j = 0; j < 3; j++) {
                 allIndices.push_back(mesh->mFaces[i].mIndices[j] + vertexOffset);
             }
         }
+
         vertexOffset = (unsigned int)allVertices.size();
         m_subsets.push_back(subset);
     }

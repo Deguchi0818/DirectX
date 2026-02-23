@@ -28,4 +28,7 @@ private:
     Microsoft::WRL::ComPtr<IDXGISwapChain>         m_swapChain;
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_renderTarget;
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_depthStencilView;
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_depthStencilState;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_rasterizerState;
+
 };

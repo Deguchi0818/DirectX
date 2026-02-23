@@ -36,9 +36,17 @@ bool Graphics::Initialize(HWND hWnd, int width, int height) {
     D3D11_VIEWPORT vp{ 0, 0, (float)width, (float)height, 0.0f, 1.0f };
     m_context->RSSetViewports(1, &vp);
 
+    D3D11_DEPTH_STENCIL_DESC dsd = {};
+    dsd.DepthEnable = TRUE;                            // 奥行き判定を有効にする
+    dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;   // 奥行きを書き込む
+    dsd.DepthFunc = D3D11_COMPARISON_LESS;             // 手前にあるものを描画する
+
+    hr = m_device->CreateDepthStencilState(&dsd, &m_depthStencilState);
+    if (FAILED(hr)) return false;
+
     D3D11_RASTERIZER_DESC rd = {};
     rd.FillMode = D3D11_FILL_SOLID;
-    rd.CullMode = D3D11_CULL_NONE;
+    rd.CullMode = D3D11_CULL_BACK;
 
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> rs;
     m_device->CreateRasterizerState(&rd, &rs);
@@ -52,6 +60,10 @@ void Graphics::BeginScene(float r, float g, float b, float a) {
     m_context->ClearRenderTargetView(m_renderTarget.Get(), clearColor);
     m_context->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
     m_context->OMSetRenderTargets(1, m_renderTarget.GetAddressOf(), m_depthStencilView.Get());
+    m_context->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
+    m_context->RSSetState(m_rasterizerState.Get());
+
+    m_context->OMSetDepthStencilState(m_depthStencilState.Get(), 1);
 }
 
 void Graphics::EndScene() {

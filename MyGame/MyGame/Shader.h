@@ -22,4 +22,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>      m_pixelShader;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>			m_boneBuffer;
 	Microsoft::WRL::ComPtr<ID3D11SamplerState>		m_samplerState;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_depthStencilState;
 };
