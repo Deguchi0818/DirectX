@@ -188,7 +188,7 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 {
     if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
 
-    if (!myModel.LoadFromFile(device, "C:/Users/PC_User/Documents/DirectX/MyGame/MyGame/Asset/test2/test.pmx")) 
+    if (!myModel.LoadFromFile(device, "C:/Users/PC_User/Documents/DirectX/MyGame/MyGame/Asset/test3/test.pmx")) 
     {
         MessageBox(nullptr, L"PMXの読み込みに失敗しました。パスを確認してください。", L"Error", MB_OK);
         return false;
