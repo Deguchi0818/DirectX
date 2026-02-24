@@ -20,18 +20,18 @@ float4 main(PS_INPUT input) : SV_TARGET
     float4 texColor = tex.Sample(samp, input.uv);
     float4 baseColor;
 
-    // テクスチャがある場所はテクスチャ、ない場所は頂点色（input.color）
-    if (length(texColor.rgb) < 0.01f && texColor.a < 0.01f)
+    // lengthによる判定ではなく、C++側から送られる useTexture フラグを使う
+    if (useTexture == 0)
     {
         baseColor = input.color;
     }
     else
     {
         baseColor = texColor;
-        clip(baseColor.a - 0.001f);
     }
 
-    // 影の計算
+    clip(baseColor.a - 0.05f);
+
     float3 lightDir = normalize(float3(1, -1, 1));
     float diffuse = dot(normalize(input.normal), -lightDir);
     float2 toonUV = float2(0.5f, 1.0f - (diffuse * 0.5f + 0.5f));
