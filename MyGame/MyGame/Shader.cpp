@@ -1,6 +1,7 @@
 #include "Shader.h"
 #include <d3dcompiler.h>
 #include <vector>
+#include "Common.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 
@@ -48,6 +49,13 @@ bool Shader::Load(ID3D11Device* device, const wchar_t* vsFile, const wchar_t* ps
     dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
     dsd.DepthFunc = D3D11_COMPARISON_LESS;
 
+    D3D11_BUFFER_DESC mbd = {};
+    mbd.ByteWidth = sizeof(MaterialData);
+    mbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    mbd.Usage = D3D11_USAGE_DYNAMIC;
+    mbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    device->CreateBuffer(&mbd, nullptr, &m_materialBuffer);
+
     hr = device->CreateDepthStencilState(&dsd, &m_depthStencilState);
     if (FAILED(hr)) return false;
 
@@ -57,6 +65,9 @@ bool Shader::Load(ID3D11Device* device, const wchar_t* vsFile, const wchar_t* ps
 
     // ピクセルシェーダーのコンパイル
     hr = D3DCompileFromFile(psFile, nullptr, nullptr, "main", "ps_5_0", 0, 0, &psBlob, &errorBlob);
+    if (FAILED(hr)) return false;
+
+    hr = device->CreateBuffer(&mbd, nullptr, &m_materialBuffer);
     if (FAILED(hr)) return false;
 
     device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &m_pixelShader);
@@ -91,4 +102,15 @@ void Shader::UpdateBones(ID3D11DeviceContext* context, const std::vector<DirectX
 
         context->Unmap(m_boneBuffer.Get(), 0); // 書き終わったら閉じる
     }
+}
+
+void Shader::SetMaterial(ID3D11DeviceContext* context, bool useTex) {
+    D3D11_MAPPED_SUBRESOURCE ms;
+    if (SUCCEEDED(context->Map(m_materialBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &ms))) {
+        MaterialData* data = (MaterialData*)ms.pData;
+        data->useTexture = useTex ? 1 : 0;
+        context->Unmap(m_materialBuffer.Get(), 0);
+    }
+    // ピクセルシェーダーのレジスタ b2 にセット
+    context->PSSetConstantBuffers(2, 1, m_materialBuffer.GetAddressOf());
 }

@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+class Shader;
+
 class Model {
 public:
     struct Subset {
@@ -23,7 +25,7 @@ public:
     void SetToonTexture(Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> toon) { m_toonTexture = toon; }
 
     // ƒƒbƒVƒ…‚ğ•`‰æ‚·‚é
-    void Draw(ID3D11DeviceContext* context);
+    void Draw(ID3D11DeviceContext* context, Shader* shader);
 
 private:
     Mesh m_mesh;

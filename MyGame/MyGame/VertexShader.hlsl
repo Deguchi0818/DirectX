@@ -39,8 +39,8 @@ VS_OUTPUT main(VS_INPUT input)
     output.pos = mul(float4(input.pos, 1.0f), wvp);
     
     output.color = input.color;
-    output.uv = input.uv; // ★データを渡す
-    output.normal = input.normal; // ★データを渡す
+    output.uv = input.uv;
+    output.normal = input.normal;
 
     return output;
 }

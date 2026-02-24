@@ -25,7 +25,7 @@ public:
     MyVector3 GetVelocity() const { return velocity; }
     void SetVelocity(const MyVector3& v) { velocity = v; }
 
-    void Draw(ID3D11DeviceContext* context, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj) 
+    void Draw(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj)
     {
         if (!pModel) return; // メッシュがない場合は何もしない
 
@@ -43,7 +43,7 @@ public:
         // シェーダーに定数バッファをセット
         context->VSSetConstantBuffers(0, 1, &cb);
 
-        pModel->Draw(context);
+        pModel->Draw(context, shader);
     }
 
     AABB GetAABB() const;

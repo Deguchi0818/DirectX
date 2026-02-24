@@ -10,20 +10,25 @@ struct PS_INPUT
     float3 normal : NORMAL; // 4. 法線
 };
 
+cbuffer MaterialBuffer : register(b2)
+{
+    int useTexture;
+};
+
 float4 main(PS_INPUT input) : SV_TARGET
 {
     float4 texColor = tex.Sample(samp, input.uv);
     float4 baseColor;
 
     // テクスチャがある場所はテクスチャ、ない場所は頂点色（input.color）
-    if (texColor.a < 0.01f)
+    if (length(texColor.rgb) < 0.01f && texColor.a < 0.01f)
     {
         baseColor = input.color;
     }
     else
     {
         baseColor = texColor;
-        clip(baseColor.a - 0.05f); 
+        clip(baseColor.a - 0.001f);
     }
 
     // 影の計算

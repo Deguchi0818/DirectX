@@ -1,6 +1,7 @@
 ﻿#include "Model.h"
 #include "GeometryGenerator.h"
 #include "Common.h"
+#include "Shader.h"
 #include <WICTextureLoader.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -90,15 +91,19 @@ void Model::CreatePlane(ID3D11Device* device, float width, float depth, const My
     m_subsets.push_back(s);
 }
 
-void Model::Draw(ID3D11DeviceContext* context) {
+void Model::Draw(ID3D11DeviceContext* context, Shader* shader) {
     m_mesh.BindBuffers(context);
     if (m_toonTexture) {
         context->PSSetShaderResources(1, 1, m_toonTexture.GetAddressOf());
     }
     for (const auto& subset : m_subsets) {
 
-        ID3D11ShaderResourceView* srv = subset.textureView.Get();
-        context->PSSetShaderResources(0, 1, &srv);
+        bool hasTexture = (subset.textureView != nullptr);
+        shader->SetMaterial(context, hasTexture);
+
+        if (hasTexture) {
+            context->PSSetShaderResources(0, 1, subset.textureView.GetAddressOf());
+        }
 
         context->DrawIndexed(subset.indexCount, subset.startIndex, 0);
     }
@@ -128,7 +133,6 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
             std::wstring targetFileName = fs::path(UTF8ToWide(rawPath)).filename().wstring();
             std::wstring targetFileNameSJIS = fs::path(SJISToWide(rawPath)).filename().wstring();
 
-            // ★ 改善：まずは Assimp が指定したパスをそのまま試す
             fs::path directPath = modelDir / UTF8ToWide(rawPath);
             if (!fs::exists(directPath)) directPath = modelDir / SJISToWide(rawPath);
 
@@ -173,9 +177,13 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex v = {};
             v.x = mesh->mVertices[i].x; v.y = mesh->mVertices[i].y; v.z = mesh->mVertices[i].z;
-            v.r = diff.r; v.g = diff.g; v.b = diff.b; v.a = diff.a;
+            v.nx = mesh->mNormals[i].x; v.ny = mesh->mNormals[i].y; v.nz = mesh->mNormals[i].z;
             if (mesh->HasTextureCoords(0)) { v.u = mesh->mTextureCoords[0][i].x; v.v = mesh->mTextureCoords[0][i].y; }
-            if (mesh->HasNormals()) { v.nx = mesh->mNormals[i].x; v.ny = mesh->mNormals[i].y; v.nz = mesh->mNormals[i].z; }
+
+            // テクスチャがある場合は頂点色を白にし、ない場合はマテリアルの色（地面の色など）を入れる
+            if (subset.textureView) { v.r = v.g = v.b = v.a = 1.0f; }
+            else { v.r = diff.r; v.g = diff.g; v.b = diff.b; v.a = diff.a; }
+
             allVertices.push_back(v);
         }
 
