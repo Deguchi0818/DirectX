@@ -188,7 +188,7 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 {
     if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
 
-    if (!myModel.LoadFromFile(device, "C:/Users/PC_User/Documents/DirectX/MyGame/MyGame/Asset/test3/test.pmx")) 
+    if (!myModel.LoadFromFile(device, "C:/Users/PC_User/Documents/DirectX/MyGame/MyGame/Asset/test4/test.fbx")) 
     {
         MessageBox(nullptr, L"PMXの読み込みに失敗しました。パスを確認してください。", L"Error", MB_OK);
         return false;
@@ -260,8 +260,9 @@ void GameInstance::CreateScene()
 
     GameObject character;
     character.pModel = &myModel; // さきほど読み込んだモデルをセット
-    character.transform.SetPosition(0.0f, 0.0f, 0.0f); // 座標を設定
-    character.transform.SetScale(0.3f, 0.3f, 0.3f);    // サイズを調整
+    character.transform.SetPosition(0.0f, 1.0f, 0.0f); // 座標を設定
+    character.transform.SetRotation(90.0f, 0.0f, 0.0);
+    character.transform.SetScale(1.0f, 1.0f, 1.0f);    // サイズを調整
 
     m_gameObjects.push_back(character);
 
