@@ -8,8 +8,8 @@
 void Player::Initialize(Model* model) 
 {
     pModel = model;
-    transform.SetScale(1.0f, 1.0f, 1.0f);
-    transform.SetRotation(90.0f, 0.0f, 0.0f);
+    transform.SetScale(0.1f, 0.1f, 0.1f);
+    transform.SetRotation(0.0f, 0.0f, 0.0f);
     transform.SetPosition(0, 0.5f, 0); // èâä˙à íu
 
     AddCollider("foot", ColliderType::AABB, { 0, 0.0f, 0 }, { 0.6f, 1.8f, 0.6f });
@@ -49,7 +49,10 @@ void Player::Update(float dt, float camYaw)
         vel.z = finalMoveZ * m_moveSpeed;
 
         float targetYaw = atan2f(finalMoveX, finalMoveZ) * (180.0f / 3.14159265f);
-        transform.SetRotation(90.0f, targetYaw + -90.0f, 0.0f);
+        transform.SetRotation(0.0f, targetYaw - 180.0f, 0.0f);
+
+        //float targetYaw = atan2f(finalMoveX, finalMoveZ) * (180.0f / 3.14159265f);
+        //transform.SetRotation(90.0f, targetYaw + -90.0f, 0.0f);
 
         transform.UpdateMatrix();
     }

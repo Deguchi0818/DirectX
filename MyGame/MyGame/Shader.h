@@ -6,7 +6,7 @@
 #include <vector>
 
 struct BoneBuffer {
-	DirectX::XMMATRIX mBoneMatrices[128];
+	DirectX::XMMATRIX mBoneMatrices[256];
 };
 
 class Shader {

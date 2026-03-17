@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <system_error>
 #include <vector>
+#include <map>
 
 namespace fs = std::filesystem;
 
@@ -55,14 +56,20 @@ void Model::CreateCube(ID3D11Device* device, float size, const MyVector4& color)
     std::vector<unsigned short> i_short;
     GeometryGenerator::CreateCube(size, color, v, i_short);
     std::vector<unsigned int> i(i_short.begin(), i_short.end()); // 型変換
-    m_mesh.Create(device, v.data(), (int)v.size(), i.data(), (int)i.size());
+    
 
     for (auto& vertex : v) {
         float len = sqrt(vertex.x * vertex.x + vertex.y * vertex.y + vertex.z * vertex.z);
+        for (int k = 0; k < 4; k++) {
+            vertex.BoneIndices[k] = 0;
+            vertex.BoneWeights[k] = 0.0f;
+        }
         if (len > 0) {
             vertex.nx = vertex.x / len; vertex.ny = vertex.y / len; vertex.nz = vertex.z / len;
         }
     }
+
+    m_mesh.Create(device, v.data(), (int)v.size(), i.data(), (int)i.size());
 
     m_subsets.clear();
     Subset s;
@@ -77,11 +84,17 @@ void Model::CreatePlane(ID3D11Device* device, float width, float depth, const My
     std::vector<unsigned short> i_short;
     GeometryGenerator::CreatePlane(width, depth, color, v, i_short);
     std::vector<unsigned int> i(i_short.begin(), i_short.end()); // 型変換
-    m_mesh.Create(device, v.data(), (int)v.size(), i.data(), (int)i.size());
-
-    for (auto& vertex : v) {
+    
+    for (auto& vertex : v) 
+    {
+        for (int k = 0; k < 4; k++) {
+            vertex.BoneIndices[k] = 0;
+            vertex.BoneWeights[k] = 0.0f;
+        }
         vertex.nx = 0.0f; vertex.ny = 1.0f; vertex.nz = 0.0f;
     }
+
+    m_mesh.Create(device, v.data(), (int)v.size(), i.data(), (int)i.size());
 
     m_subsets.clear();
     Subset s;
@@ -113,8 +126,11 @@ void Model::Draw(ID3D11DeviceContext* context, Shader* shader) {
 }
 
 bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
+    m_bones.clear();
+    m_subsets.clear();
     Assimp::Importer importer;
-    // ★ 修正：法線がないモデルのために自動生成フラグを追加
+
+    // 法線がないモデルのために自動生成フラグを追加
     const aiScene* scene = importer.ReadFile(filename,
         aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_ConvertToLeftHanded | aiProcess_GenSmoothNormals);
 
@@ -140,7 +156,7 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
                 DirectX::CreateWICTextureFromFile(device, directPath.c_str(), nullptr, &texView);
             }
 
-            // 見つからない場合のみ再帰検索を行う（test3 対策）
+            // 見つからない場合のみ再帰検索を行う
             if (!texView) {
                 std::error_code ec;
                 for (const auto& entry : fs::recursive_directory_iterator(modelDir, ec)) {
@@ -161,6 +177,8 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
     std::vector<unsigned int> allIndices;
     unsigned int vertexOffset = 0;
 
+    std::map<std::string, unsigned int> boneMapping;
+
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
 
@@ -173,7 +191,7 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
         Subset subset = { (unsigned int)mesh->mNumFaces * 3, (unsigned int)allIndices.size(), nullptr };
         if (mesh->mMaterialIndex < (unsigned int)textures.size()) subset.textureView = textures[mesh->mMaterialIndex];
 
-        // ★ 修正：頂点ループは必ず「1回」にする！
+        // 頂点ループは必ず「1回」にする！
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex v = {};
             v.x = mesh->mVertices[i].x; v.y = mesh->mVertices[i].y; v.z = mesh->mVertices[i].z;
@@ -194,8 +212,73 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
             }
         }
 
+        for (unsigned int i = 0; i < mesh->mNumBones; i++)
+        {
+            aiBone* bone = mesh->mBones[i];
+            std::string boneName = bone->mName.C_Str();
+
+            unsigned int actualBoneID = 0;
+
+            // すでに登録されているボーンかチェック
+            if (boneMapping.find(boneName) == boneMapping.end())
+            {
+                // 新しいボーンなら、新しいIDを割り当てて行列を保存
+                actualBoneID = (unsigned int)m_bones.size();
+                boneMapping[boneName] = actualBoneID;
+
+                BoneInfo info;
+                info.name = boneName;
+
+                // Assimpの行列をDirectx::XMMATRIXに変換して保存
+                aiMatrix4x4 m_assimp = bone->mOffsetMatrix;
+                info.offset = DirectX::XMMatrixSet(
+                    m_assimp.a1, m_assimp.a2, m_assimp.a3, m_assimp.a4,
+                    m_assimp.b1, m_assimp.b2, m_assimp.b3, m_assimp.b4,
+                    m_assimp.c1, m_assimp.c2, m_assimp.c3, m_assimp.c4,
+                    m_assimp.d1, m_assimp.d2, m_assimp.d3, m_assimp.d4
+                );
+                m_bones.push_back(info);
+            }
+            else
+            {
+                // すでに登録済みなら、その時のIDを使う
+                actualBoneID = boneMapping[boneName];
+            }
+
+            // ウェイトの設定
+            for (unsigned int j = 0; j < bone->mNumWeights; j++)
+            {
+                unsigned int vertexID = vertexOffset + bone->mWeights[j].mVertexId;
+                float weight = bone->mWeights[j].mWeight;
+
+                for (int k = 0; k < 4; k++)
+                {
+                    if (allVertices[vertexID].BoneWeights[k] == 0.0f)
+                    {
+                        // 重複を排除した「actualBoneID」をセットする
+                        allVertices[vertexID].BoneIndices[k] = actualBoneID;
+                        allVertices[vertexID].BoneWeights[k] = weight;
+                        break;
+                    }
+                }
+            }
+        }
+
         vertexOffset = (unsigned int)allVertices.size();
         m_subsets.push_back(subset);
+    }
+
+    for (auto& bone : m_bones)
+    {
+        // Assimp のシーン全体からそのボーン名のノードを探す
+        aiNode* node = scene->mRootNode->FindNode(bone.name.c_str());
+        if (node && node->mParent) {
+            std::string parentName = node->mParent->mName.C_Str();
+            // 親の名前がボーンリストに存在すれば、その ID を parentIndex に入れる
+            if (boneMapping.count(parentName)) {
+                bone.parentIndex = boneMapping[parentName];
+            }
+        }
     }
     m_mesh.Create(device, allVertices.data(), (int)allVertices.size(), allIndices.data(), (int)allIndices.size());
     return true;

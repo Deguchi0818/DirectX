@@ -18,12 +18,12 @@ bool Shader::Load(ID3D11Device* device, const wchar_t* vsFile, const wchar_t* ps
 
     // 入力レイアウトの作成
     D3D11_INPUT_ELEMENT_DESC layout[] = {
-     { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-     { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // 12B目
-     { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 28, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // 28B目
-     { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // 36B目
-     { "BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-     { "BLENDWEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 64, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+     { "POSITION",     0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+     { "NORMAL",       0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // 12から
+     { "TEXCOORD",     0, DXGI_FORMAT_R32G32_FLOAT,       0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // 24から
+     { "COLOR",        0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // 32から
+     { "BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_UINT,  0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // 48から
+     { "BLENDWEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 64, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // 64から
     };
     device->CreateInputLayout(layout, ARRAYSIZE(layout), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &m_inputLayout);
 
@@ -93,11 +93,11 @@ void Shader::UpdateBones(ID3D11DeviceContext* context, const std::vector<DirectX
     if (SUCCEEDED(hr)) {
         BoneBuffer* dataPtr = (BoneBuffer*)mappedResource.pData;
 
-        // 最大128個までコピーする
-        size_t count = min(matrices.size(), 128);
+        // 最大64個までコピーする
+        size_t count = min(matrices.size(), 256);
         for (size_t i = 0; i < count; i++) {
             // シェーダー側が行列を正しく計算できるように「転置(Transpose)」して送るのが一般的です
-            dataPtr->mBoneMatrices[i] = DirectX::XMMatrixTranspose(matrices[i]);
+            dataPtr->mBoneMatrices[i] = matrices[i];
         }
 
         context->Unmap(m_boneBuffer.Get(), 0); // 書き終わったら閉じる

@@ -31,17 +31,29 @@ public:
 
         // 行列の計算
         transform.UpdateMatrix();
-        MyMatrix4x4 wvp = MyMatrix4x4::Multiply(transform.GetWorldMatrix(), view);
-        wvp = MyMatrix4x4::Multiply(wvp, proj);
+        MyMatrix4x4 worldMat = transform.GetWorldMatrix();
+        MyMatrix4x4 viewMat = view;
+        MyMatrix4x4 projMat = proj;
 
+        DirectX::XMMATRIX world = *(DirectX::XMMATRIX*)&worldMat;
+        DirectX::XMMATRIX xmView = *(DirectX::XMMATRIX*)&viewMat;
+        DirectX::XMMATRIX xmProj = *(DirectX::XMMATRIX*)&projMat;
+
+        DirectX::XMMATRIX wvp = world * xmView * xmProj;
         // 定数バッファの更新
         ConstantBufferData cbData;
-        MyMatrix4x4 finalMat = wvp.Transpose();
-        memcpy(&cbData.wvp, &finalMat, sizeof(MyMatrix4x4));
-        context->UpdateSubresource(cb, 0, nullptr, &cbData, 0, 0);
+        cbData.wvp = wvp;
 
+        D3D11_MAPPED_SUBRESOURCE ms;
+        if (SUCCEEDED(context->Map(cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms)))
+        {
+            memcpy(ms.pData, &cbData, sizeof(cbData));
+            context->Unmap(cb, 0);
+        }
+
+        ID3D11Buffer* pBuffer = cb;
         // シェーダーに定数バッファをセット
-        context->VSSetConstantBuffers(0, 1, &cb);
+        context->VSSetConstantBuffers(0, 1, &pBuffer);
 
         pModel->Draw(context, shader);
     }

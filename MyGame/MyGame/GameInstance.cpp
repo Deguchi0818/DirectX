@@ -55,7 +55,7 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
 
     Microsoft::WRL::ComPtr<ID3D11BlendState> pBlendState;
     device->CreateBlendState(&bd, &pBlendState);
-    m_graphics.GetContext()->OMSetBlendState(pBlendState.Get(), nullptr, 0xffffffff);
+    //m_graphics.GetContext()->OMSetBlendState(pBlendState.Get(), nullptr, 0xffffffff);
 
     return true;
 }
@@ -140,6 +140,8 @@ void GameInstance::Render()
     // ジャンプ力や移動速度をスライダーで調整できるようにする
     ImGui::SliderFloat("Jump Power", &m_player.GetJumpPower(), 0.0f, 20.0f);
     ImGui::SliderFloat("Move Speed", &m_player.GetMoveSpeed(), 0.0f, 20.0f);
+    static int selectedBone = 10; // 動かしたいボーンの番号
+    ImGui::SliderInt("Select Bone ID", &selectedBone, 0, (int)myModel.m_bones.size() - 1);
     ImGui::End();
 
     if (m_isDebugMode) {
@@ -157,7 +159,61 @@ void GameInstance::Render()
 
     auto context = m_graphics.GetContext();
 
+    static float timer = 0.0f;
+    timer += m_deltaTime;
+
+    // GPUに送る最終的な行列
+    std::vector<DirectX::XMMATRIX> finalBones(256, DirectX::XMMatrixIdentity());
+    // GPUに送る最終的な行列
+    std::vector<DirectX::XMMATRIX> worldMatrices(256, DirectX::XMMatrixIdentity());
+   
+    std::vector<DirectX::XMMATRIX> localMatrices(myModel.m_bones.size(), DirectX::XMMatrixIdentity());
+    for (int i = 0; i < (int)myModel.m_bones.size(); i++) {
+        if (i == selectedBone) {
+            localMatrices[i] = DirectX::XMMatrixRotationZ(timer);
+        }
+    }
+
+    for (int i = 0; i < (int)myModel.m_bones.size(); i++) 
+    {
+        DirectX::XMVECTOR det;
+        // 自分の初期姿勢
+        DirectX::XMMATRIX defaultPose = DirectX::XMMatrixInverse(&det, myModel.m_bones[i].offset);
+
+        // 自分の姿勢 = 自分の回転 * 初期姿勢
+        worldMatrices[i] = localMatrices[i] * defaultPose;
+
+        // 親がいるなら、親の変形を自分に乗せる
+        int parentIdx = myModel.m_bones[i].parentIndex;
+        if (parentIdx != -1) {
+            // 親の offset の逆行列（親の初期世界姿勢）との差分を計算して適用する必要があるため
+            // シンプルにするなら、以下の階層伝播ロジックが PMX に適しています
+            DirectX::XMMATRIX parentWorld = worldMatrices[parentIdx];
+            // 親の初期姿勢を打ち消してから、今の親の世界姿勢を掛ける
+            DirectX::XMMATRIX parentDefault = DirectX::XMMatrixInverse(&det, myModel.m_bones[parentIdx].offset);
+            DirectX::XMMATRIX parentMove = DirectX::XMMatrixInverse(&det, parentDefault) * parentWorld;
+
+            worldMatrices[i] = worldMatrices[i] * parentMove;
+        }
+    }
+
+    // 最後にスキニング行列を確定させる
+    for (int i = 0; i < (int)myModel.m_bones.size(); i++) {
+        finalBones[i] = myModel.m_bones[i].offset * worldMatrices[i];
+    }
+
+    // 最後にシェーダー用行列を確定
+    for (int i = 0; i < (int)myModel.m_bones.size(); i++) {
+        finalBones[i] = myModel.m_bones[i].offset * worldMatrices[i];
+    }
+
+    // GPUへ転送！
+    m_baseShader.UpdateBones(context, finalBones);
     m_baseShader.Bind(context);
+
+    ImGui::Begin("Debug Menu");
+    ImGui::Text("Model Bone Count: %d", (int)myModel.m_bones.size());
+    ImGui::End();
 
     // 行列の準備
     auto view = m_camera.GetViewMatrix();
@@ -188,7 +244,7 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 {
     if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
 
-    if (!myModel.LoadFromFile(device, "C:/Users/PC_User/Documents/DirectX/MyGame/MyGame/Asset/test4/test.fbx")) 
+    if (!myModel.LoadFromFile(device, "C:/Users/PC_User/Documents/DirectX/MyGame/MyGame/Asset/test2/test.pmx")) 
     {
         MessageBox(nullptr, L"PMXの読み込みに失敗しました。パスを確認してください。", L"Error", MB_OK);
         return false;
@@ -211,7 +267,11 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
     m_planeModel.CreatePlane(device, 1.0f, 1.0f, { 0.0f, 0.5f, 0.0f, 1.0f });
 
     // 定数バッファ作成
-    D3D11_BUFFER_DESC cbDesc{ .ByteWidth = sizeof(ConstantBufferData), .BindFlags = D3D11_BIND_CONSTANT_BUFFER };
+    D3D11_BUFFER_DESC cbDesc = {};
+    cbDesc.ByteWidth = sizeof(ConstantBufferData);
+    cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    cbDesc.Usage = D3D11_USAGE_DYNAMIC;          // 動的に変更可能にする
+    cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     device->CreateBuffer(&cbDesc, nullptr, &m_constantBuffer);
 
     return true;
@@ -261,7 +321,7 @@ void GameInstance::CreateScene()
     GameObject character;
     character.pModel = &myModel; // さきほど読み込んだモデルをセット
     character.transform.SetPosition(0.0f, 1.0f, 0.0f); // 座標を設定
-    character.transform.SetRotation(90.0f, 0.0f, 0.0);
+    character.transform.SetRotation(0.0f, 0.0f, 0.0);
     character.transform.SetScale(1.0f, 1.0f, 1.0f);    // サイズを調整
 
     m_gameObjects.push_back(character);

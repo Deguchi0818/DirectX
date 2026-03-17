@@ -6,6 +6,12 @@
 
 class Shader;
 
+struct BoneInfo {
+    std::string name;
+    int parentIndex = -1;
+    DirectX::XMMATRIX offset;
+};
+
 class Model {
 public:
     struct Subset {
@@ -27,6 +33,8 @@ public:
     // メッシュを描画する
     void Draw(ID3D11DeviceContext* context, Shader* shader);
 
+    // ボーンのオフセット行列を保存する配列
+    std::vector<BoneInfo> m_bones;
 private:
     Mesh m_mesh;
 

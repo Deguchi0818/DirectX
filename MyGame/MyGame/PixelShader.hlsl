@@ -34,8 +34,19 @@ float4 main(PS_INPUT input) : SV_TARGET
 
     float3 lightDir = normalize(float3(1, -1, 1));
     float diffuse = dot(normalize(input.normal), -lightDir);
-    float2 toonUV = float2(0.5f, 1.0f - (diffuse * 0.5f + 0.5f));
-    float4 shadowFactor = toon.Sample(samp, toonUV);
+    //float2 toonUV = float2(0.5f, 1.0f - (diffuse * 0.5f + 0.5f));
+    //float4 shadowFactor = toon.Sample(samp, toonUV);
 
-    return baseColor * (shadowFactor * 0.5f + 0.5f);
+    //return baseColor * (shadowFactor * 0.5f + 0.5f);
+    float shadow;
+    if (diffuse > 0.0f)
+    {
+        shadow = 1.0f;
+    }
+    else
+    {
+        shadow = 0.6f;
+    }
+    
+    return baseColor * shadow;
 }
