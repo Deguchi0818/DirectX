@@ -46,11 +46,12 @@ bool Graphics::Initialize(HWND hWnd, int width, int height) {
 
     D3D11_RASTERIZER_DESC rd = {};
     rd.FillMode = D3D11_FILL_SOLID;
+    //rd.FillMode = D3D11_FILL_WIREFRAME;
     rd.CullMode = D3D11_CULL_BACK;
 
-    Microsoft::WRL::ComPtr<ID3D11RasterizerState> rs;
-    m_device->CreateRasterizerState(&rd, &rs);
-    m_context->RSSetState(rs.Get());
+    // C³: ƒƒ“ƒo•Ï” m_rasterizerState ‚É’¼Úì¬‚µ‚Ä•Û‘¶‚·‚é
+    m_device->CreateRasterizerState(&rd, &m_rasterizerState);
+    m_context->RSSetState(m_rasterizerState.Get());
 
     return true;
 }

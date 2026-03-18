@@ -1,5 +1,4 @@
 #pragma pack_matrix(row_major)
-
 cbuffer ConstantBuffer : register(b0)
 {
     matrix wvp; // World-View-Projection çsóÒ

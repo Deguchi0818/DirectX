@@ -15,6 +15,7 @@
 #pragma comment(lib, "d3d11.lib")
 
 #include <WICTextureLoader.h>
+#include <functional>
 
 using Microsoft::WRL::ComPtr;
 
@@ -174,27 +175,49 @@ void GameInstance::Render()
         }
     }
 
-    for (int i = 0; i < (int)myModel.m_bones.size(); i++) 
-    {
+    // ボーンの階層順に計算するための再帰処理
+    std::vector<bool> isCalculated(myModel.m_bones.size(), false);
+
+    std::function<void(int)> CalcBoneMatrix = [&](int boneIdx) {
+        if (isCalculated[boneIdx]) return; // 既に計算済みならスキップ
+
+        int parentIdx = myModel.m_bones[boneIdx].parentIndex;
+
+        // 親がいるなら、自分の計算の前に親を計算させる
+        if (parentIdx != -1) {
+            CalcBoneMatrix(parentIdx);
+        }
+
+
         DirectX::XMVECTOR det;
         // 自分の初期姿勢
-        DirectX::XMMATRIX defaultPose = DirectX::XMMatrixInverse(&det, myModel.m_bones[i].offset);
+        DirectX::XMMATRIX globalBind = DirectX::XMMatrixInverse(&det, myModel.m_bones[boneIdx].offset);
 
-        // 自分の姿勢 = 自分の回転 * 初期姿勢
-        worldMatrices[i] = localMatrices[i] * defaultPose;
-
-        // 親がいるなら、親の変形を自分に乗せる
-        int parentIdx = myModel.m_bones[i].parentIndex;
-        if (parentIdx != -1) {
-            // 親の offset の逆行列（親の初期世界姿勢）との差分を計算して適用する必要があるため
-            // シンプルにするなら、以下の階層伝播ロジックが PMX に適しています
-            DirectX::XMMATRIX parentWorld = worldMatrices[parentIdx];
-            // 親の初期姿勢を打ち消してから、今の親の世界姿勢を掛ける
-            DirectX::XMMATRIX parentDefault = DirectX::XMMatrixInverse(&det, myModel.m_bones[parentIdx].offset);
-            DirectX::XMMATRIX parentMove = DirectX::XMMatrixInverse(&det, parentDefault) * parentWorld;
-
-            worldMatrices[i] = worldMatrices[i] * parentMove;
+        // 親からの相対的な位置（ローカル空間の初期姿勢）を計算
+        DirectX::XMMATRIX localBind;
+        if (parentIdx != -1) 
+        {
+            localBind = globalBind * myModel.m_bones[parentIdx].offset;
         }
+        else {
+            localBind = globalBind;
+        }
+
+        DirectX::XMMATRIX newLocal = localMatrices[boneIdx] * localBind;
+
+        if (parentIdx != -1) {
+            worldMatrices[boneIdx] = newLocal * worldMatrices[parentIdx];
+        }
+        else {
+            worldMatrices[boneIdx] = newLocal;
+        }
+
+        isCalculated[boneIdx] = true;
+        };
+
+    // 全てのボーンに対して再帰計算を実行
+    for (int i = 0; i < (int)myModel.m_bones.size(); i++) {
+        CalcBoneMatrix(i);
     }
 
     // 最後にスキニング行列を確定させる

@@ -58,7 +58,13 @@ void Model::CreateCube(ID3D11Device* device, float size, const MyVector4& color)
     std::vector<unsigned int> i(i_short.begin(), i_short.end()); // 型変換
     
 
-    for (auto& vertex : v) {
+
+    for (auto& vertex : v)
+    {
+        vertex.r = color.x;
+        vertex.g = color.y;
+        vertex.b = color.z;
+        vertex.a = color.w;
         float len = sqrt(vertex.x * vertex.x + vertex.y * vertex.y + vertex.z * vertex.z);
         for (int k = 0; k < 4; k++) {
             vertex.BoneIndices[k] = 0;
@@ -87,6 +93,10 @@ void Model::CreatePlane(ID3D11Device* device, float width, float depth, const My
     
     for (auto& vertex : v) 
     {
+        vertex.r = color.x;
+        vertex.g = color.y;
+        vertex.b = color.z;
+        vertex.a = color.w;
         for (int k = 0; k < 4; k++) {
             vertex.BoneIndices[k] = 0;
             vertex.BoneWeights[k] = 0.0f;
@@ -116,6 +126,11 @@ void Model::Draw(ID3D11DeviceContext* context, Shader* shader) {
 
         if (hasTexture) {
             context->PSSetShaderResources(0, 1, subset.textureView.GetAddressOf());
+        }
+        else {
+            // 修正: テクスチャがない場合は nullptr をセットして前の設定をクリアする
+            ID3D11ShaderResourceView* nullSRV = nullptr;
+            context->PSSetShaderResources(0, 1, &nullSRV);
         }
 
         context->DrawIndexed(subset.indexCount, subset.startIndex, 0);
@@ -231,12 +246,12 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
 
                 // Assimpの行列をDirectx::XMMATRIXに変換して保存
                 aiMatrix4x4 m_assimp = bone->mOffsetMatrix;
-                info.offset = DirectX::XMMatrixSet(
+                info.offset = DirectX::XMMatrixTranspose(DirectX::XMMatrixSet(
                     m_assimp.a1, m_assimp.a2, m_assimp.a3, m_assimp.a4,
                     m_assimp.b1, m_assimp.b2, m_assimp.b3, m_assimp.b4,
                     m_assimp.c1, m_assimp.c2, m_assimp.c3, m_assimp.c4,
                     m_assimp.d1, m_assimp.d2, m_assimp.d3, m_assimp.d4
-                );
+                ));
                 m_bones.push_back(info);
             }
             else
@@ -270,16 +285,32 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
 
     for (auto& bone : m_bones)
     {
+        bone.parentIndex = -1;
         // Assimp のシーン全体からそのボーン名のノードを探す
         aiNode* node = scene->mRootNode->FindNode(bone.name.c_str());
-        if (node && node->mParent) {
-            std::string parentName = node->mParent->mName.C_Str();
-            // 親の名前がボーンリストに存在すれば、その ID を parentIndex に入れる
-            if (boneMapping.count(parentName)) {
-                bone.parentIndex = boneMapping[parentName];
+        if (node) {
+            aiNode* parentNode = node->mParent;
+            // 直属の親だけでなく、ボーンとして登録されている親が見つかるまで遡り続ける
+            while (parentNode) {
+                std::string parentName = parentNode->mName.C_Str();
+                if (boneMapping.count(parentName)) {
+                    bone.parentIndex = boneMapping[parentName];
+                    break; // 見つかったらループ終了
+                }
+                parentNode = parentNode->mParent; // 見つからなければさらに上の階層へ
             }
         }
     }
+    for (auto& v : allVertices) {
+        float sum = v.BoneWeights[0] + v.BoneWeights[1] + v.BoneWeights[2] + v.BoneWeights[3];
+        if (sum > 0.0f) {
+            v.BoneWeights[0] /= sum;
+            v.BoneWeights[1] /= sum;
+            v.BoneWeights[2] /= sum;
+            v.BoneWeights[3] /= sum;
+        }
+    }
+
     m_mesh.Create(device, allVertices.data(), (int)allVertices.size(), allIndices.data(), (int)allIndices.size());
     return true;
 }

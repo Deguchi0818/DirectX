@@ -93,10 +93,8 @@ void Shader::UpdateBones(ID3D11DeviceContext* context, const std::vector<DirectX
     if (SUCCEEDED(hr)) {
         BoneBuffer* dataPtr = (BoneBuffer*)mappedResource.pData;
 
-        // 最大64個までコピーする
         size_t count = min(matrices.size(), 256);
         for (size_t i = 0; i < count; i++) {
-            // シェーダー側が行列を正しく計算できるように「転置(Transpose)」して送るのが一般的です
             dataPtr->mBoneMatrices[i] = matrices[i];
         }
 
