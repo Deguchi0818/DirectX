@@ -317,20 +317,22 @@ void GameInstance::CreateScene()
     GameObject wall;
     wall.pModel = &m_cubeModel;
     wall.transform.SetPosition(5.0f, 1.0f, 0.0f);
-    wall.transform.SetScale(1.0f, 2.0f, 5.0f);
+    wall.transform.SetScale(1.0f, 7.0f, 5.0f);
     wall.isStatic = true;
     wall.m_isTrigger = false;
     wall.AddCollider("wall_main", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
-    m_terrain.push_back(wall);
+    wall.m_friction = 1.0f;
+    m_gameObjects.push_back(wall);
 
     GameObject block;
-    wall.pModel = &m_cubeModel;
-    wall.transform.SetPosition(6.0f, 3.5f, 0.0f);
-    wall.transform.SetScale(1.0f, 1.0f, 1.0f);
-    wall.isStatic = true;
-    wall.m_isTrigger = false;
-    wall.AddCollider("block", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
-    m_terrain.push_back(wall);
+    block.pModel = &m_cubeModel;
+    block.transform.SetPosition(0.0f, 3.5f, 0.0f);
+    block.transform.SetScale(1.0f, 1.0f, 1.0f);
+    block.isStatic = false;
+    block.m_useGravity = true;
+    block.m_isTrigger = false;
+    block.AddCollider("block", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
+    m_gameObjects.push_back(block);
 
     GameObject coin;
     coin.pModel = &m_cubeModel;
@@ -341,13 +343,14 @@ void GameInstance::CreateScene()
     coin.AddCollider("coin", ColliderType::Sphere, { 0,0,0 }, { 0,0,0 }, 0.5f, true);
     m_gameObjects.push_back(coin);
 
-    GameObject character;
-    character.pModel = &myModel; // さきほど読み込んだモデルをセット
-    character.transform.SetPosition(0.0f, 1.0f, 0.0f); // 座標を設定
-    character.transform.SetRotation(0.0f, 0.0f, 0.0);
-    character.transform.SetScale(1.0f, 1.0f, 1.0f);    // サイズを調整
 
-    m_gameObjects.push_back(character);
+    //GameObject character;
+    //character.pModel = &myModel; // さきほど読み込んだモデルをセット
+    //character.transform.SetPosition(0.0f, 1.0f, 0.0f); // 座標を設定
+    //character.transform.SetRotation(0.0f, 0.0f, 0.0);
+    //character.transform.SetScale(1.0f, 1.0f, 1.0f);    // サイズを調整
+
+    //m_gameObjects.push_back(character);
 
     m_player.Initialize(&myModel);
 
@@ -356,9 +359,16 @@ void GameInstance::CreateScene()
     {
         m_physics.AddStaticObject(&obj);
     }
-    for (auto& obj : m_gameObjects) 
+    for (auto& obj : m_gameObjects)
     {
-        m_physics.AddStaticObject(&obj);
+        if (obj.isStatic)
+        {
+            m_physics.AddStaticObject(&obj);  // コインなどはこっち
+        }
+        else
+        {
+            m_physics.AddDynamicObject(&obj); // 木箱などはこっち
+        }
     }
 
    

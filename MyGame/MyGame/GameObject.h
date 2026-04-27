@@ -18,6 +18,11 @@ public:
     bool m_isTrigger = false;
     bool isStatic = false;
 
+    float m_mass = 1.0f;          // ¿—Ê 
+    float m_restitution = 0.0f;   // ”½”­ŒW” (0.0: ’µ‚Ë‚È‚¢ ` 1.0: Š®‘S‚É’µ‚Ë‚é)
+    float m_friction = 0.5f;      // –€CŒW” (0.0: ƒcƒ‹ƒcƒ‹ ` 1.0: ƒUƒ‰ƒUƒ‰)
+    bool m_useGravity = true;     // d—Í‚Ì‰e‹¿‚ğó‚¯‚é‚©
+
     MyVector3 velocity = { 0.0f, 0.0f, 0.0f };
     virtual void OnCollisionEnter(std::string myColName, GameObject* other, std::string otherColName) {}
     virtual void OnTriggerEnter(GameObject* other) {}

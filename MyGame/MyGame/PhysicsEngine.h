@@ -26,6 +26,8 @@ private:
 
     void ResolveOverlap(GameObject* a, GameObject* b, const AABB& boxA, const AABB& boxB);
 
-    void ResolveSphereAABBOverlap(GameObject* sphereObj, const Sphere& s, const AABB& b, bool isSphereMove);
+    void ResolveSphereAABBOverlap(GameObject* moveObj, GameObject* staticObj, const Sphere& s, const AABB& b, bool isSphereMove);
+
+    void ApplyImpulse(GameObject* objA, GameObject* objB, const MyVector3& normal, float overlap);
 };
 

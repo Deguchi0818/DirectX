@@ -16,6 +16,10 @@ void Player::Initialize(Model* model)
     AddCollider("body", ColliderType::AABB, { 0, 0.5f, 0 }, { 1.2f, 1.5f, 1.2f });
     AddCollider("head", ColliderType::Sphere, { 0, 1.3f, 0 }, { 0.4f, 0.4f, 0.4f });
 
+    m_restitution = 0.0f;
+    m_friction = 5.0f;
+
+
     transform.UpdateMatrix();
 }
 
@@ -58,8 +62,8 @@ void Player::Update(float dt, float camYaw)
     }
     else
     {
-        vel.x = 0.0f;
-        vel.z = 0.0f;
+        //vel.x = 0.0f;
+        //vel.z = 0.0f;
     }
 
     if (coyoteTimer >= 0) 
