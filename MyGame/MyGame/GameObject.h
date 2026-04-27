@@ -23,6 +23,8 @@ public:
     float m_friction = 0.5f;      // –€CŒW” (0.0: ƒcƒ‹ƒcƒ‹ ` 1.0: ƒUƒ‰ƒUƒ‰)
     bool m_useGravity = true;     // d—Í‚Ì‰e‹¿‚ğó‚¯‚é‚©
 
+    bool m_showCollider = false;
+
     MyVector3 velocity = { 0.0f, 0.0f, 0.0f };
     virtual void OnCollisionEnter(std::string myColName, GameObject* other, std::string otherColName) {}
     virtual void OnTriggerEnter(GameObject* other) {}
@@ -71,7 +73,16 @@ public:
 
     void AddCollider(std::string name, ColliderType type, MyVector3 offset, MyVector3 scale, float radius = 0.0f, bool isTrigger = false)
     {
-        m_colliders.push_back({ name, type, offset, scale, radius, isTrigger });
+        ColliderComponent col;
+        col.name = name;
+        col.type = type;
+        col.offset = offset;
+        col.scale = scale;
+        col.radius = radius;
+        col.height = 0.0f;
+        col.isTrigger = isTrigger;
+
+        m_colliders.push_back(col);
     }
 };
 

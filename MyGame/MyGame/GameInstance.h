@@ -13,6 +13,7 @@
 #include "Model.h"
 #include "Player.h"
 #include "PhysicsEngine.h"
+#include "DebugRenderer.h"
 
 class GameInstance
 {
@@ -50,6 +51,7 @@ private:
 	Camera m_camera;
 	Player m_player;
 	PhysicsEngine m_physics;
+	DebugRenderer m_debugRenderer;
 
 	std::chrono::high_resolution_clock::time_point m_lastTime;
 	float m_deltaTime = 0.0f;

@@ -10,6 +10,7 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 
+
 #include <d3dcompiler.h>
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
@@ -259,6 +260,50 @@ void GameInstance::Render()
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
+    if (m_isDebugMode)
+    {
+        // プレイヤーのコライダーを常に表示する設定
+        m_player.m_showCollider = true;
+
+        // コライダーを DebugRenderer に登録するための便利なラムダ式（関数内関数）
+        auto AddCollidersToDebug = [&](GameObject& obj) {
+            if (!obj.m_showCollider) return;
+
+            for (const auto& col : obj.m_colliders)
+            {
+                if (col.type == ColliderType::AABB) {
+                    AABB worldAABB = col.GetWorldAABB(obj.transform.GetPosition(), obj.transform.GetScale());
+                    m_debugRenderer.AddAABB(worldAABB, { 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
+                }
+                else if (col.type == ColliderType::Sphere) {
+                    Sphere worldSphere = col.GetWorldSphere(obj.transform.GetPosition(), obj.transform.GetScale());
+                    m_debugRenderer.AddSphere(worldSphere, { 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+                }
+            }
+            };
+
+        // プレイヤーのコライダーを登録
+        AddCollidersToDebug(m_player);
+
+        // ゲームオブジェクトのコライダーを登録
+        for (auto& obj : m_gameObjects) {
+            // テスト用に全部表示したい場合はコメントアウトを外す
+            // obj.m_showCollider = true; 
+            AddCollidersToDebug(obj);
+        }
+
+        // 地形(Terrain)のコライダーを登録
+        for (auto& obj : m_terrain) {
+            // obj.m_showCollider = true;
+            AddCollidersToDebug(obj);
+        }
+
+        // 登録したすべての線を GPU に送って描画する！
+        MyMatrix4x4 viewProj = MyMatrix4x4::Multiply(view, proj);
+        DirectX::XMMATRIX xmViewProj = DirectX::XMLoadFloat4x4((const DirectX::XMFLOAT4X4*)viewProj.m);
+        m_debugRenderer.Render(context, xmViewProj);
+    }
+
     //描画終了
     m_graphics.EndScene();
 }
@@ -296,6 +341,7 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
     cbDesc.Usage = D3D11_USAGE_DYNAMIC;          // 動的に変更可能にする
     cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     device->CreateBuffer(&cbDesc, nullptr, &m_constantBuffer);
+    m_debugRenderer.Initialize(device);
 
     return true;
 }
@@ -304,6 +350,7 @@ void GameInstance::CreateScene()
 {
     m_gameObjects.clear();
     m_terrain.clear();
+
 
     // オブジェクトの配置
     GameObject floor;
@@ -331,6 +378,7 @@ void GameInstance::CreateScene()
     block.isStatic = false;
     block.m_useGravity = true;
     block.m_isTrigger = false;
+    block.m_showCollider = true;
     block.AddCollider("block", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
     m_gameObjects.push_back(block);
 
@@ -340,6 +388,7 @@ void GameInstance::CreateScene()
     coin.transform.SetScale(0.5f, 0.5f, 0.5f);
     coin.isStatic = true;
     coin.m_isTrigger = true;
+    coin.m_showCollider = true;
     coin.AddCollider("coin", ColliderType::Sphere, { 0,0,0 }, { 0,0,0 }, 0.5f, true);
     m_gameObjects.push_back(coin);
 
