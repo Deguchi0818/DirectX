@@ -29,6 +29,9 @@ void Player::Update(float dt, float camYaw)
     float moveX = 0.0f;
     float moveZ = 0.0f;
 
+    moveX = Input::GetAxisX();
+    moveZ = Input::GetAxisZ();
+
     if (Input::GetKey('W')) moveZ += 1.0f;
     if (Input::GetKey('S')) moveZ -= 1.0f;
     if (Input::GetKey('A')) moveX -= 1.0f;
@@ -39,6 +42,9 @@ void Player::Update(float dt, float camYaw)
     float len = sqrtf(moveX * moveX + moveZ * moveZ);
     if (len > 0.0f)
     {
+        // “ü—Í‚Ì‹­‚³‚ð•Û‘¶
+        float inputIntensity = (len > 1.0f) ? 1.0f : len;
+
         moveX /= len;
         moveZ /= len;
 
@@ -50,8 +56,8 @@ void Player::Update(float dt, float camYaw)
         float finalMoveX = (moveX * rtX) + (moveZ * fwdX);
         float finalMoveZ = (moveX * rtZ) + (moveZ * fwdZ);
 
-        vel.x = finalMoveX * m_moveSpeed;
-        vel.z = finalMoveZ * m_moveSpeed;
+        vel.x = finalMoveX * m_moveSpeed * inputIntensity;
+        vel.z = finalMoveZ * m_moveSpeed * inputIntensity;
 
         float targetYaw = atan2f(finalMoveX, finalMoveZ) * (180.0f / 3.14159265f);
         transform.SetRotation(0.0f, targetYaw - 180.0f, 0.0f);
@@ -72,7 +78,8 @@ void Player::Update(float dt, float camYaw)
         coyoteTimer -= dt;
     }
 
-    if (Input::GetKey(VK_SPACE) && (m_isGrounded || coyoteTimer >= 0))
+    if (Input::GetKey(VK_SPACE) && (m_isGrounded || coyoteTimer >= 0) || 
+        Input::GetButtonDown(XINPUT_GAMEPAD_A) && (m_isGrounded || coyoteTimer >= 0))
     {
         vel.y = m_jumpPower;
         m_isGrounded = false;
