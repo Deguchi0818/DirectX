@@ -1,6 +1,7 @@
 #include "Collider.h"
 
-AABB ColliderComponent::GetWorldAABB(const MyVector3& parentPos, const MyVector3& parentScale) const {
+AABB ColliderComponent::GetWorldAABB(const MyVector3& parentPos, const MyVector3& parentScale) const 
+{
     // 親のスケールを考慮してオフセットとサイズを計算
     MyVector3 worldCenter = {
         parentPos.x + offset.x * parentScale.x,
@@ -26,6 +27,25 @@ Sphere ColliderComponent::GetWorldSphere(const MyVector3& parentPos, const MyVec
         .x = parentPos.x + offset.x * parentScale.x,
         .y = parentPos.y + offset.y * parentScale.y,
         .z = parentPos.z + offset.z * parentScale.z,
+        .radius = radius * parentScale.x
+    };
+}
+
+Capsule ColliderComponent::GetWorldCapsule(const MyVector3& parentPos, const MyVector3& parentScale) const
+{
+    MyVector3 worldP1 = {
+        parentPos.x + offset.x * parentScale.x,
+        parentPos.y + (offset.y + height * 0.5f) * parentScale.y,
+        parentPos.z + offset.z * parentScale.z
+    };
+    MyVector3 worldP2 = {
+        parentPos.x + offset.x * parentScale.x,
+        parentPos.y + (offset.y - height * 0.5f) * parentScale.y,
+        parentPos.z + offset.z * parentScale.z
+    };
+    return {
+        .p1 = worldP1,
+        .p2 = worldP2,
         .radius = radius * parentScale.x
     };
 }

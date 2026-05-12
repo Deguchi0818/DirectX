@@ -18,6 +18,10 @@ public:
 	[[nodiscard]] MyMatrix4x4 GetProjectionMatrix(float aspect) const;
 
 	float GetYaw() { return m_yaw; }
+	float GetPitch() { return m_pitch; }
+
+	float& GetSensitivity() { return sensitivity; }
+	float& GetRightStickSensitivity() { return rightStickSensitivity; }
 
 private:
 	Transform m_transform;
@@ -25,5 +29,8 @@ private:
 
 	float m_yaw = 0.0f;
 	float m_pitch = 0.0f;
+
+	float sensitivity = 0.0005f;
+	float rightStickSensitivity = 0.01f;	// 右スティックの感度
 };
 

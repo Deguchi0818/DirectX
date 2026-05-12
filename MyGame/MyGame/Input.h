@@ -25,6 +25,9 @@ public:
     static float GetAxisX();    // 左スティックの水平移動量（-1.0 ～ 1.0）
     static float GetAxisZ();    // 左スティックの垂直移動量（-1.0 ～ 1.0）
 
+	static float GetRightAxisX();    // 右スティックの水平移動量（-1.0 ～ 1.0）
+	static float GetRightAxisZ();    // 右スティックの垂直移動量（-1.0 ～ 1.0）
+
     static bool IsControllerConnected() { return m_isConnected; }
 
 private:

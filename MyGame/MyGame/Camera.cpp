@@ -1,4 +1,5 @@
 #include "Camera.h"
+#include "Input.h"
 #include <algorithm>
 #include <Windows.h>
 
@@ -9,10 +10,11 @@ void Camera::Update(float dt)
 
 void Camera::Rotate(float dx, float dy) 
 {
-	float sensitivity = 0.0005f;
-
 	m_yaw += dx * sensitivity;
 	m_pitch += dy * sensitivity;
+
+	m_yaw += Input::GetRightAxisX() * rightStickSensitivity; // 右スティックの水平入力でヨーを直接
+	m_pitch += Input::GetRightAxisZ() * rightStickSensitivity; // 右スティックの垂直入力でピッチを直接
 
 	// 真上や真下を見た時に画面がひっくり返らないように制限
 	m_pitch = std::clamp(m_pitch, -1.5f, 1.5f);

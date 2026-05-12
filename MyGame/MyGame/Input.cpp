@@ -100,3 +100,39 @@ float Input::GetAxisZ() {
     
     return normalizedValue * sign;
 }
+
+float Input::GetRightAxisX() {
+    if (!m_isConnected) return 0.0f;
+
+    float raw = (float)m_currentControllerState.Gamepad.sThumbRX;
+    float deadzone = (float)XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE;
+    float maxValue = 32767.0f;
+
+    if (abs(raw) < deadzone) return 0.0f;
+
+    float sign = (raw > 0) ? 1.0f : -1.0f;
+    float normalizedValue = (abs(raw) - deadzone) / (maxValue - deadzone);
+
+    if (normalizedValue > 1.0f) normalizedValue = 1.0f;
+    if (normalizedValue < 0.0f) normalizedValue = 0.0f;
+
+    return normalizedValue * sign;
+}
+
+float Input::GetRightAxisZ() {
+    if (!m_isConnected) return 0.0f;
+
+    float raw = (float)m_currentControllerState.Gamepad.sThumbRY;
+    float deadzone = (float)XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE;
+    float maxValue = 32767.0f;
+
+    if (abs(raw) < deadzone) return 0.0f;
+
+    float sign = (raw > 0) ? 1.0f : -1.0f;
+    float normalizedValue = (abs(raw) - deadzone) / (maxValue - deadzone);
+
+    if (normalizedValue > 1.0f) normalizedValue = 1.0f;
+    if (normalizedValue < 0.0f) normalizedValue = 0.0f;
+
+    return normalizedValue * sign;
+}

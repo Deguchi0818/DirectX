@@ -144,9 +144,12 @@ void GameInstance::Render()
     ImGui::SliderFloat("Move Speed", &m_player.GetMoveSpeed(), 0.0f, 20.0f);
     static int selectedBone = 10; // ìÆÇ©ÇµÇΩÇ¢É{Å[ÉìÇÃî‘çÜ
     ImGui::SliderInt("Select Bone ID", &selectedBone, 0, (int)myModel.m_bones.size() - 1);
+    ImGui::SliderFloat("Mouse Sensitivity", &m_camera.GetSensitivity(), 0.0001f, 0.01f);
+    ImGui::SliderFloat("Right Stick Sensitivity", &m_camera.GetRightStickSensitivity(), 0.0001f, 0.1f);
     ImGui::End();
 
-    if (m_isDebugMode) {
+    if (m_isDebugMode) 
+    {
         ImGui::Begin("Physics Debug");
         if (m_player.m_hitHead) {
             ImGui::TextColored(ImVec4(1, 0, 0, 1), "HEAD CRASH!"); // ê‘ï∂éöÇ≈ï\é¶
