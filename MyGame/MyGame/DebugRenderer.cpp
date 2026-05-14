@@ -73,7 +73,7 @@ bool DebugRenderer::Initialize(ID3D11Device* device)
 {
     HRESULT hr;
 
-    // 1. シェーダーのコンパイルと作成
+    // シェーダーのコンパイルと作成
     Microsoft::WRL::ComPtr<ID3DBlob> vsBlob = nullptr;
     Microsoft::WRL::ComPtr<ID3DBlob> psBlob = nullptr;
     Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -87,14 +87,14 @@ bool DebugRenderer::Initialize(ID3D11Device* device)
     device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &m_vertexShader);
     device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &m_pixelShader);
 
-    // 2. 入力レイアウトの作成 (Position と Color)
+    // 入力レイアウトの作成 (Position と Color)
     D3D11_INPUT_ELEMENT_DESC layout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
     device->CreateInputLayout(layout, ARRAYSIZE(layout), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &m_inputLayout);
 
-    // 3. 頂点バッファの作成（動的更新可能: D3D11_USAGE_DYNAMIC）
+    // 頂点バッファの作成（動的更新可能: D3D11_USAGE_DYNAMIC）
     D3D11_BUFFER_DESC vbDesc = {};
     vbDesc.Usage = D3D11_USAGE_DYNAMIC;
     vbDesc.ByteWidth = sizeof(DebugVertex) * 10000; // 最大1万頂点（5000本ライン）
@@ -146,7 +146,7 @@ void DebugRenderer::Render(ID3D11DeviceContext* context, const DirectX::XMMATRIX
     context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
     context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
-    // 描画実行！
+    // 描画実行
     context->Draw((UINT)vertexCount, 0);
 
     // 描画が終わったらリストを空にする（毎フレーム作り直すため）
@@ -159,5 +159,4 @@ void DebugRenderer::Render(ID3D11DeviceContext* context, const DirectX::XMMATRIX
 void DebugRenderer::Finalize()
 {
     m_vertices.clear();
-    // ComPtrを使っているので明示的なReleaseは不要ですが、必要に応じてクリアします
 }
