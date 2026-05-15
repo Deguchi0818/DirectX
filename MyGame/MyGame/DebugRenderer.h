@@ -21,6 +21,7 @@ public:
 	void AddLine(const MyVector3& p1, const MyVector3& p2, const MyVector4& color);
 	void AddAABB(const AABB& aabb, const MyVector4& color);
 	void AddSphere(const Sphere& sphere, const MyVector4& color);
+	void AddCapsule(const Capsule& capsule, const MyVector4& color);
 
 	void Render(ID3D11DeviceContext* context, const DirectX::XMMATRIX& viewProj);
 

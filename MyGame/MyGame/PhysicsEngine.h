@@ -28,6 +28,12 @@ private:
 
     void ResolveSphereAABBOverlap(GameObject* moveObj, GameObject* staticObj, const Sphere& s, const AABB& b, bool isSphereMove);
 
+    void ResolveCapsuleSphereOverlap(GameObject* capObj, GameObject* sphereObj, const Capsule& cap, const Sphere& sph);
+
+    void ResolveCapsuleAABBOverlap(GameObject* capObj, GameObject* aabbObj, const Capsule& cap, const AABB& aabb);
+
     void ApplyImpulse(GameObject* objA, GameObject* objB, const MyVector3& normal, float overlap);
+
+    void CheckAndResolveCollision(GameObject* a, GameObject* b);
 };
 

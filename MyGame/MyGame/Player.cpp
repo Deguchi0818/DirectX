@@ -12,9 +12,13 @@ void Player::Initialize(Model* model)
     transform.SetRotation(0.0f, 0.0f, 0.0f);
     transform.SetPosition(0, 0.5f, 0); // èâä˙à íu
 
-    AddCollider("foot", ColliderType::AABB, { 0, 0.0f, 0 }, { 10.0f, 1.0f, 10.0f });
-    AddCollider("body", ColliderType::AABB, { 0, 10.0f, 0 }, { 10.0f, 16.0f, 10.0f });
-    AddCollider("head", ColliderType::Sphere, { 0, 19.0f, 0 }, { 10.0f, 10.0f, 10.0f }, 2.0f);
+   // AddCollider("foot", ColliderType::AABB, { 0, 0.0f, 0 }, { 10.0f, 1.0f, 10.0f });
+    auto& bodyCol = AddCollider("body", ColliderType::Capsule, { 0, 10.0f, 0 }, { 10.0f, 16.0f, 10.0f });
+    bodyCol.radius = 2.0f;
+    bodyCol.height = 15.0f;
+    bodyCol.isTrigger = false;
+    auto& headCol = AddCollider("head", ColliderType::Sphere, { 0, 19.0f, 0 }, { 10.0f, 10.0f, 10.0f });
+    headCol.radius = 2.0f;
 
     m_restitution = 0.0f;
     m_friction = 5.0f;

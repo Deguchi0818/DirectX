@@ -69,6 +69,27 @@ void DebugRenderer::AddSphere(const Sphere& sphere, const MyVector4& color)
     }
 }
 
+void DebugRenderer::AddCapsule(const Capsule& capsule, const MyVector4& color)
+{
+    // 上と下の半球（の代わりの球）を描画
+    Sphere topSphere = { capsule.p1.x, capsule.p1.y, capsule.p1.z, capsule.radius };
+    Sphere bottomSphere = { capsule.p2.x, capsule.p2.y, capsule.p2.z, capsule.radius };
+
+    AddSphere(topSphere, color);
+    AddSphere(bottomSphere, color);
+
+    // 側面をつなぐ4本の縦線
+    float r = capsule.radius;
+
+    // X軸側の側面ライン
+    AddLine({ capsule.p1.x + r, capsule.p1.y, capsule.p1.z }, { capsule.p2.x + r, capsule.p2.y, capsule.p2.z }, color);
+    AddLine({ capsule.p1.x - r, capsule.p1.y, capsule.p1.z }, { capsule.p2.x - r, capsule.p2.y, capsule.p2.z }, color);
+
+    // Z軸側の側面ライン
+    AddLine({ capsule.p1.x, capsule.p1.y, capsule.p1.z + r }, { capsule.p2.x, capsule.p2.y, capsule.p2.z + r }, color);
+    AddLine({ capsule.p1.x, capsule.p1.y, capsule.p1.z - r }, { capsule.p2.x, capsule.p2.y, capsule.p2.z - r }, color);
+}
+
 bool DebugRenderer::Initialize(ID3D11Device* device)
 {
     HRESULT hr;

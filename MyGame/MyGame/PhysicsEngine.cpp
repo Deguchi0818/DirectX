@@ -37,180 +37,172 @@ void PhysicsEngine::ResolveCollisions()
     {
         for (auto& b : m_staticObjects)
         {
-            for (const auto& colA : a->m_colliders)
-            {
-                for (const auto& colB : b->m_colliders)
-                {
-                    bool collisionDetected = false;
-
-                    // --- 組み合わせごとの判定ロジック ---
-
-                    // AABB vs AABB
-                    if (colA.type == ColliderType::AABB && colB.type == ColliderType::AABB)
-                    {
-                        AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
-                        AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
-
-                        if (Collider::AABBCollider(worldA, worldB))
-                        {
-                            collisionDetected = true;
-                            // トリガーでなければ押し戻しを行う
-                            if (!colA.isTrigger && !colB.isTrigger) {
-                                ResolveOverlap(a, b, worldA, worldB);
-                            }
-                        }
-                    }
-                    // Sphere vs Sphere
-                    else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::Sphere)
-                    {
-                        Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
-                        Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
-
-                        if (Collider::SphereCollider(worldA, worldB))
-                        {
-                            collisionDetected = true;
-                        }
-                    }
-                    // Sphere (A) vs AABB (B)
-                    else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::AABB)
-                    {
-                        Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
-                        AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
-
-                        if (Collider::SphereVsAABB(worldA, worldB))
-                        {
-                            collisionDetected = true;
-                            if (!colA.isTrigger && !colB.isTrigger)
-                            {
-                                // true を渡して、A(Sphere)を押し戻す
-                                ResolveSphereAABBOverlap(a, b, worldA, worldB, true);
-                            }
-                        }
-                    }
-                    // AABB (A) vs Sphere (B)
-                    else if (colA.type == ColliderType::AABB && colB.type == ColliderType::Sphere)
-                    {
-                        AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
-                        Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
-
-                        if (Collider::SphereVsAABB(worldB, worldA))
-                        {
-                            collisionDetected = true;
-                            if (!colA.isTrigger && !colB.isTrigger)
-                            {
-                                // false を渡して、A(AABB)を逆方向に押し戻す
-                                ResolveSphereAABBOverlap(a, b, worldB, worldA, false);
-                            }
-                        }
-                    }
-
-                    // --- 衝突後のイベント通知 ---
-                    if (collisionDetected)
-                    {
-                        if (colA.isTrigger || colB.isTrigger)
-                        {
-                            a->OnTriggerEnter(b);
-                        }
-                        else
-                        {
-                            a->OnCollisionEnter(colA.name, b, colB.name);
-                        }
-                    }
-
-                }
-            }
+            CheckAndResolveCollision(a, b);
         }
     }
 
     // Dynamic vs Dynamic
-    for (size_t i = 0; i < m_dynamicObjects.size(); ++i) {
-        for (size_t j = i + 1; j < m_dynamicObjects.size(); ++j) {
+    for (size_t i = 0; i < m_dynamicObjects.size(); ++i)
+    {
+        for (size_t j = i + 1; j < m_dynamicObjects.size(); ++j)
+        {
             GameObject* a = m_dynamicObjects[i];
             GameObject* b = m_dynamicObjects[j];
 
-            for (const auto& colA : a->m_colliders) {
-                for (const auto& colB : b->m_colliders) {
-
-                    bool collisionDetected = false;
-
-                    // --- 組み合わせごとの判定ロジック ---
-
-                    // AABB vs AABB
-                    if (colA.type == ColliderType::AABB && colB.type == ColliderType::AABB)
-                    {
-                        AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
-                        AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
-
-                        if (Collider::AABBCollider(worldA, worldB))
-                        {
-                            collisionDetected = true;
-                            // トリガーでなければ押し戻しを行う
-                            if (!colA.isTrigger && !colB.isTrigger) {
-                                ResolveOverlap(a, b, worldA, worldB);
-                            }
-                        }
-                    }
-                    // Sphere vs Sphere
-                    else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::Sphere)
-                    {
-                        Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
-                        Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
-
-                        if (Collider::SphereCollider(worldA, worldB))
-                        {
-                            collisionDetected = true;
-                        }
-                    }
-                    // Sphere (A) vs AABB (B)
-                    else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::AABB)
-                    {
-                        Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
-                        AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
-
-                        if (Collider::SphereVsAABB(worldA, worldB))
-                        {
-                            collisionDetected = true;
-                            if (!colA.isTrigger && !colB.isTrigger)
-                            {
-                                // true を渡して、A(Sphere)を押し戻す
-                                ResolveSphereAABBOverlap(a, b, worldA, worldB, true);
-                            }
-                        }
-                    }
-                    // AABB (A) vs Sphere (B)
-                    else if (colA.type == ColliderType::AABB && colB.type == ColliderType::Sphere)
-                    {
-                        AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
-                        Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
-
-                        if (Collider::SphereVsAABB(worldB, worldA))
-                        {
-                            collisionDetected = true;
-                            if (!colA.isTrigger && !colB.isTrigger)
-                            {
-                                // false を渡して、A(AABB)を逆方向に押し戻す
-                                ResolveSphereAABBOverlap(a, b, worldB, worldA, false);
-                            }
-                        }
-                    }
-
-                    // --- 衝突後のイベント通知 ---
-                    if (collisionDetected)
-                    {
-                        if (colA.isTrigger || colB.isTrigger)
-                        {
-                            a->OnTriggerEnter(b);
-                        }
-                        else
-                        {
-                            a->OnCollisionEnter(colA.name, b, colB.name);
-                        }
-                    }
-
-                }
-            }
+            CheckAndResolveCollision(a, b);
         }
     }
+}
+
+void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b) 
+{
+    for (const auto& colA : a->m_colliders)
+    {
+        for (const auto& colB : b->m_colliders)
+        {
+            bool collisionDetected = false;
+
+            // --- 組み合わせごとの判定ロジック ---
+
+            // AABB vs AABB
+            if (colA.type == ColliderType::AABB && colB.type == ColliderType::AABB)
+            {
+                AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
+                AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+
+                if (Collider::AABBCollider(worldA, worldB))
+                {
+                    collisionDetected = true;
+                    // トリガーでなければ押し戻しを行う
+                    if (!colA.isTrigger && !colB.isTrigger) {
+                        ResolveOverlap(a, b, worldA, worldB);
+                    }
+                }
+            }
+            // Sphere vs Sphere
+            else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::Sphere)
+            {
+                Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
+                Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
+
+                if (Collider::SphereCollider(worldA, worldB))
+                {
+                    collisionDetected = true;
+                }
+            }
+            // Sphere (A) vs AABB (B)
+            else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::AABB)
+            {
+                Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
+                AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+
+                if (Collider::SphereVsAABB(worldA, worldB))
+                {
+                    collisionDetected = true;
+                    if (!colA.isTrigger && !colB.isTrigger)
+                    {
+                        // true を渡して、A(Sphere)を押し戻す
+                        ResolveSphereAABBOverlap(a, b, worldA, worldB, true);
+                    }
+                }
+            }
+            // AABB (A) vs Sphere (B)
+            else if (colA.type == ColliderType::AABB && colB.type == ColliderType::Sphere)
+            {
+                AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
+                Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
+
+                if (Collider::SphereVsAABB(worldB, worldA))
+                {
+                    collisionDetected = true;
+                    if (!colA.isTrigger && !colB.isTrigger)
+                    {
+                        // false を渡して、A(AABB)を逆方向に押し戻す
+                        ResolveSphereAABBOverlap(a, b, worldB, worldA, false);
+                    }
+                }
+            }
+
+            // Capsule (A) vs AABB (B)
+            else if (colA.type == ColliderType::Capsule && colB.type == ColliderType::AABB)
+            {
+                Capsule worldCapsule = colA.GetWorldCapsule(a->transform.GetPosition(), a->transform.GetScale());
+                AABB worldAABB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+
+                if (Collider::CapsuleVsAABB(worldCapsule, worldAABB))
+                {
+                    collisionDetected = true;
+                    if (!colA.isTrigger && !colB.isTrigger)
+                    {
+                        ResolveCapsuleAABBOverlap(a, b, worldCapsule, worldAABB);
+                    }
+                }
+            }
+            // AABB (A) vs Capsule (B) -- 逆パターン
+            else if (colA.type == ColliderType::AABB && colB.type == ColliderType::Capsule)
+            {
+                AABB worldAABB = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
+                Capsule worldCapsule = colB.GetWorldCapsule(b->transform.GetPosition(), b->transform.GetScale());
+
+                if (Collider::CapsuleVsAABB(worldCapsule, worldAABB))
+                {
+                    collisionDetected = true;
+                    if (!colA.isTrigger && !colB.isTrigger)
+                    {
+                        // Bがカプセルなので、引数の順番を(b, a)にする
+                        ResolveCapsuleAABBOverlap(b, a, worldCapsule, worldAABB);
+                    }
+                }
+            }
+
+            else if (colA.type == ColliderType::Capsule && colB.type == ColliderType::Sphere)
+            {
+                Capsule worldCapsule = colA.GetWorldCapsule(a->transform.GetPosition(), a->transform.GetScale());
+                Sphere worldSphere = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
+
+                if (Collider::CapsuleVsSphere(worldCapsule, worldSphere))
+                {
+                    collisionDetected = true;
+                    if (!colA.isTrigger && !colB.isTrigger)
+                    {
+                        ResolveCapsuleSphereOverlap(a, b, worldCapsule, worldSphere);
+                    }
+                }
+            }
+
+            else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::Capsule)
+            {
+                Capsule worldCapsule = colB.GetWorldCapsule(b->transform.GetPosition(), b->transform.GetScale());
+                Sphere worldSphere = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
+
+                if (Collider::CapsuleVsSphere(worldCapsule, worldSphere))
+                {
+                    collisionDetected = true;
+                    if (!colA.isTrigger && !colB.isTrigger)
+                    {
+                        ResolveCapsuleSphereOverlap(a, b, worldCapsule, worldSphere);
+                    }
+                }
+            }
+
+
+
+            // --- 衝突後のイベント通知 ---
+            if (collisionDetected)
+            {
+                if (colA.isTrigger || colB.isTrigger)
+                {
+                    a->OnTriggerEnter(b);
+                }
+                else
+                {
+                    a->OnCollisionEnter(colA.name, b, colB.name);
+                }
+            }
+
+        }
+    }
+    
 }
 
 void PhysicsEngine::ResolveOverlap(GameObject* a, GameObject* b, const AABB& boxA, const AABB& boxB)
@@ -264,6 +256,91 @@ void PhysicsEngine::ResolveSphereAABBOverlap(GameObject* moveObj, GameObject* st
 
     ApplyImpulse(moveObj, staticObj, normal, overlap);
 }
+
+void PhysicsEngine::ResolveCapsuleAABBOverlap(GameObject* capObj, GameObject* aabbObj, const Capsule& cap, const AABB& aabb)
+{
+    // カプセルの上下の線分の中で、AABBの高さ(Y)に一番近い場所を探す
+    float minY = (std::min)(cap.p1.y, cap.p2.y);
+    float maxY = (std::max)(cap.p1.y, cap.p2.y);
+    float aabbCenterY = (aabb.min.y + aabb.max.y) * 0.5f;
+
+    // カプセルの線分上で、AABBに一番近い高さ（pY）
+    float pY = std::clamp(aabbCenterY, minY, maxY);
+    MyVector3 P = { cap.p1.x, pY, cap.p1.z }; // これがカプセル側の最近接点 P
+
+    // 2点Pに対して、AABBの表面面や辺で一番近い場所を探す
+    float qX = std::clamp(P.x, aabb.min.x, aabb.max.x);
+    float qY = std::clamp(P.y, aabb.min.y, aabb.max.y);
+    float qZ = std::clamp(P.z, aabb.min.z, aabb.max.z);
+
+
+    // カプセルの点P と AABBの表面の点Q の距離を計算する
+    float dx = P.x - qX;
+    float dy = P.y - qY;
+    float dz = P.z - qZ;
+    float dist = sqrtf(dx * dx + dy * dy + dz * dz);
+
+    MyVector3 normal = { 0, 0, 0 };
+    float overlap = 0.0f;
+
+    if (dist > 0.0001f)
+    {
+        // 通常の衝突外側から壁や床にぶつかっている
+        overlap = cap.radius - dist;
+        if (overlap <= 0.0f) return; // 届いていなければ何もしない
+
+        normal = { dx / dist, dy / dist, dz / dist };
+    }
+    else
+    {
+        // AABBの中心から外側へ向けて、一番近い面（前後左右上下）を探して押し出す
+        float dx_to_max = aabb.max.x - P.x;
+        float dx_to_min = P.x - aabb.min.x;
+        float dy_to_max = aabb.max.y - P.y;
+        float dy_to_min = P.y - aabb.min.y;
+        float dz_to_max = aabb.max.z - P.z;
+        float dz_to_min = P.z - aabb.min.z;
+
+        float minOverlap = dx_to_max; normal = { 1, 0, 0 }; // まずXのプラス方向を仮の最短とする
+
+        if (dx_to_min < minOverlap) { minOverlap = dx_to_min; normal = { -1, 0, 0 }; }
+        if (dy_to_max < minOverlap) { minOverlap = dy_to_max; normal = { 0, 1, 0 }; }
+        if (dy_to_min < minOverlap) { minOverlap = dy_to_min; normal = { 0, -1, 0 }; }
+        if (dz_to_max < minOverlap) { minOverlap = dz_to_max; normal = { 0, 0, 1 }; }
+        if (dz_to_min < minOverlap) { minOverlap = dz_to_min; normal = { 0, 0, -1 }; }
+
+        // 面までの距離 ＋ カプセルの半径分 を押し出す
+        overlap = minOverlap + cap.radius;
+    }
+
+    // カプセルを押し出す！
+    ApplyImpulse(capObj, aabbObj, normal, overlap);
+}
+
+void PhysicsEngine::ResolveCapsuleSphereOverlap(GameObject* capObj, GameObject* sphereObj, const Capsule& cap, const Sphere& sph)
+{
+    // カプセル上の最近接点を探す
+    MyVector3 closestPoint = Collider::GetClosestPointOnLineSegment(cap.p1, cap.p2, { sph.x, sph.y, sph.z });
+    
+	// 最近接点と球の中心の距離を計算
+    float dx = closestPoint.x - sph.x;
+    float dy = closestPoint.y - sph.y;
+    float dz = closestPoint.z - sph.z;
+    float dist = sqrtf(dx * dx + dy * dy + dz * dz);
+    
+	// 距離が非常に小さい場合は、重なりが大きすぎて正確な法線が計算できないため、処理をスキップ
+    if (dist < 0.0001f) return;
+    
+    // めり込み量
+    float overlap = (cap.radius + sph.radius) - dist;
+    if (overlap <= 0) return;
+    
+	// カプセルを押し戻す場合は法線の向きをそのまま、球を押し戻す場合は逆向きにする
+    MyVector3 normal = { dx / dist, dy / dist, dz / dist };
+
+    ApplyImpulse(capObj, sphereObj, normal, overlap);
+}
+
 
 void PhysicsEngine::ApplyImpulse(GameObject* objA, GameObject* objB, const MyVector3& normal, float overlap)
 {

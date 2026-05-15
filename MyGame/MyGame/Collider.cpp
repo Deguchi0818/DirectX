@@ -57,6 +57,30 @@ float Clamp(float n, float min, float max)
     return n;
 }
 
+MyVector3 Collider::GetClosestPointOnLineSegment(const MyVector3& A, const MyVector3& B, const MyVector3& P) 
+{
+    // ベクトル AB と AP
+	MyVector3 AB = { B.x - A.x, B.y - A.y, B.z - A.z };
+	MyVector3 AP = { P.x - A.x, P.y - A.y, P.z - A.z };
+
+    // ABの長さの二乗
+	float abSq = AB.x * AB.x + AB.y * AB.y + AB.z * AB.z;
+	if (abSq == 0.0f) return A; // A と B が同じ点の場合
+
+    // 内積(AP・AB) を使って、AからBに向かってどれくらい進んだ位置が最短か（割合 t）を求める
+	float t = (AP.x * AB.x + AP.y * AB.y + AP.z * AB.z) / abSq;
+
+	t = Clamp(t, 0.0f, 1.0f);
+
+    // 最近接点の座標を計算して返す
+	return {
+		A.x + AB.x * t,
+		A.y + AB.y * t,
+		A.z + AB.z * t
+	};
+}
+
+
 bool Collider::SphereCollider(const Sphere& a, const Sphere& b) 
 {
 	float dx = a.x - b.x;
@@ -97,4 +121,43 @@ bool Collider::SphereVsAABB(const Sphere& sphere, const AABB& aabb)
 
     // 半径の二乗と比較: d^2 <= r^2
     return distanceSq <= (sphere.radius * sphere.radius);
+}
+
+bool Collider::CapsuleVsAABB(const Capsule& capsule, const AABB& aabb) 
+{
+    float minY = std::min(capsule.p1.y, capsule.p2.y);
+	float maxY = std::max(capsule.p1.y, capsule.p2.y);
+	float aabbCenterY = (aabb.min.y + aabb.max.y) * 0.5f;
+
+	float pY = Clamp(aabbCenterY, minY, maxY);
+
+	MyVector3 p = { capsule.p1.x, pY, capsule.p1.z };
+
+	float qX = Clamp(p.x, aabb.min.x, aabb.max.x);
+	float qY = Clamp(p.y, aabb.min.y, aabb.max.y);
+	float qZ = Clamp(p.z, aabb.min.z, aabb.max.z);
+
+	float dx = p.x - qX;
+	float dy = p.y - qY;
+	float dz = p.z - qZ;
+	float distanceSq = dx * dx + dy * dy + dz * dz;
+
+	return distanceSq <= (capsule.radius * capsule.radius);
+}
+
+bool Collider::CapsuleVsSphere(const Capsule& capsule, const Sphere& sphere) 
+{
+    // カプセルの中心線（p1からp2）上で、球の中心（コイン）に最も近い点を探す
+    MyVector3 closestPoint = GetClosestPointOnLineSegment(capsule.p1, capsule.p2, { sphere.x, sphere.y, sphere.z });
+    
+    // その最近接点から、球の中心までの距離（の二乗）を計算する
+    float dx = sphere.x - closestPoint.x;
+    float dy = sphere.y - closestPoint.y;
+    float dz = sphere.z - closestPoint.z;
+
+    // お互いの半径を足した距離（の二乗）と比較する
+    float distanceSq = dx * dx + dy * dy + dz * dz;
+
+    // 実際の距離が、半径の合計よりも短ければ当たっている
+    return distanceSq <= (capsule.radius + sphere.radius) * (capsule.radius + sphere.radius);
 }

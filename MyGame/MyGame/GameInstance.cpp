@@ -234,7 +234,7 @@ void GameInstance::Render()
         finalBones[i] = myModel.m_bones[i].offset * worldMatrices[i];
     }
 
-    // GPUÇ÷ì]ëóÅI
+    // GPUÇ÷ì]ëó
     m_baseShader.UpdateBones(context, finalBones);
     m_baseShader.Bind(context);
 
@@ -281,6 +281,11 @@ void GameInstance::Render()
                 else if (col.type == ColliderType::Sphere) {
                     Sphere worldSphere = col.GetWorldSphere(obj.transform.GetPosition(), obj.transform.GetScale());
                     m_debugRenderer.AddSphere(worldSphere, { 1.0f, 0.0f, 0.0f, 1.0f }); // ê‘êF
+                }
+                else if (col.type == ColliderType::Capsule)
+                {
+                    Capsule worldCapsule = col.GetWorldCapsule(obj.transform.GetPosition(), obj.transform.GetScale());
+                    m_debugRenderer.AddCapsule(worldCapsule, { 1.0f, 0.0f, 0.0f, 1.0f }); // ê‘êFÇ≈ï`âÊ
                 }
             }
             };
@@ -392,7 +397,9 @@ void GameInstance::CreateScene()
     coin.isStatic = true;
     coin.m_isTrigger = true;
     coin.m_showCollider = true;
-    coin.AddCollider("coin", ColliderType::Sphere, { 0,0,0 }, { 0,0,0 }, 0.5f, true);
+    auto& coinCol = coin.AddCollider("coin", ColliderType::Sphere, { 0,0,0 }, { 1,1,1 });
+    coinCol.radius = 0.5f;
+    coinCol.isTrigger = true;
     m_gameObjects.push_back(coin);
 
 

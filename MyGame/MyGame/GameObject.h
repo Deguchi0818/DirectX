@@ -71,18 +71,18 @@ public:
 
     const std::vector<ColliderComponent>& GetColliders() const { return m_colliders; }
 
-    void AddCollider(std::string name, ColliderType type, MyVector3 offset, MyVector3 scale, float radius = 0.0f, bool isTrigger = false)
+    ColliderComponent& AddCollider(std::string name, ColliderType type, MyVector3 offset, MyVector3 scale, bool isTrigger = false)
     {
         ColliderComponent col;
         col.name = name;
         col.type = type;
         col.offset = offset;
         col.scale = scale;
-        col.radius = radius;
-        col.height = 0.0f;
         col.isTrigger = isTrigger;
 
         m_colliders.push_back(col);
+
+        return m_colliders.back();
     }
 };
 
