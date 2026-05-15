@@ -217,27 +217,28 @@ void GameInstance::Render()
         else {
             localBind = globalBind;
         }
-
         DirectX::XMMATRIX newLocal;
-        if (hasAnim[boneIdx]) 
+        if (hasAnim[boneIdx])
         {
-            if (parentIdx != -1) 
+            if (parentIdx != -1)
             {
+                // 子ボーン：位置（Trans）は「Tポーズ（localBind）」から、回転（Rot）は「アニメ（animMatrices）」から！
                 DirectX::XMVECTOR bindScale, bindRot, bindTrans;
                 DirectX::XMMatrixDecompose(&bindScale, &bindRot, &bindTrans, localBind);
 
                 DirectX::XMVECTOR animScale, animRot, animTrans;
                 DirectX::XMMatrixDecompose(&animScale, &animRot, &animTrans, animMatrices[boneIdx]);
 
-                animRot = DirectX::XMQuaternionNormalize(animRot);
+                animRot = DirectX::XMQuaternionNormalize(animRot); // 爆発を防ぐ安全装置
 
+                // 綺麗な関節位置を保ったまま、回転だけを適用して合成！
                 newLocal = DirectX::XMMatrixScalingFromVector(bindScale) *
                     DirectX::XMMatrixRotationQuaternion(animRot) *
                     DirectX::XMMatrixTranslationFromVector(bindTrans);
             }
-            else 
+            else
             {
-                // ルートボーン（一番親の腰など）は、歩く・ジャンプする等の移動量が含まれるのでそのまま使う
+                // ルートボーン（一番親の腰など）：歩く・走るの移動量が含まれるのでそのまま使う
                 newLocal = animMatrices[boneIdx];
             }
         }
@@ -246,12 +247,10 @@ void GameInstance::Render()
             newLocal = localBind;
         }
 
-        if (parentIdx != -1) 
-        {
+        if (parentIdx != -1) {
             worldMatrices[boneIdx] = newLocal * worldMatrices[parentIdx];
         }
-        else 
-        {
+        else {
             worldMatrices[boneIdx] = newLocal;
         }
 
@@ -357,7 +356,7 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 {
     if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
 
-    if (!myModel.LoadFromFile(device, "Asset/Fast Run.fbx")) 
+    if (!myModel.LoadFromFile(device, "Asset/Idle.fbx")) 
     {
         MessageBox(nullptr, L"PMXの読み込みに失敗しました。パスを確認してください。", L"Error", MB_OK);
         return false;

@@ -143,6 +143,8 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
     m_subsets.clear();
     Assimp::Importer importer;
 
+    importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
+
     // 法線がないモデルのために自動生成フラグを追加
     const aiScene* scene = importer.ReadFile(filename,
         aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_ConvertToLeftHanded | aiProcess_GenSmoothNormals);
@@ -395,12 +397,49 @@ void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>&
     {
         std::string boneName = m_bones[i].name;
 
+        std::string searchName = "";
+
+        // 1. まずは完全一致を試す
         if (clip.channels.count(boneName) > 0)
         {
-            outHasAnim[i] = true;
-            BoneAnimation& anim = clip.channels[boneName];
+            searchName = boneName;
+        }
+        else
+        {
+            // 2. "mixamorig:" などの装飾を取り除いた「純粋な骨の名前」を作る
+            std::string pureBoneName = boneName;
+            size_t pos = pureBoneName.find("mixamorig:");
+            if (pos != std::string::npos) pureBoneName = pureBoneName.substr(pos + 10);
 
-            // 1. 大きさ（Scale）
+            // 3. アニメーションの中から、純粋な名前が「完全一致」するものを探す！
+            for (auto& pair : clip.channels)
+            {
+                std::string pureChannelName = pair.first;
+
+                // チャンネル名からも "mixamorig:" を消す
+                size_t pos2 = pureChannelName.find("mixamorig:");
+                if (pos2 != std::string::npos) pureChannelName = pureChannelName.substr(pos2 + 10);
+
+                // Assimp特有のゴミ文字（_$AssimpFbx$_など）を消す
+                size_t pos3 = pureChannelName.find("_$");
+                if (pos3 != std::string::npos) pureChannelName = pureChannelName.substr(0, pos3);
+
+                // 🌟 超重要: find() ではなく == で完全一致を見る！（Spine と Spine1 の誤爆を防ぐ）
+                if (pureBoneName == pureChannelName)
+                {
+                    searchName = pair.first;
+                    break;
+                }
+            }
+        }
+
+        // 吸収した名前（searchName）を使って検索！
+        if (clip.channels.count(searchName) > 0)
+        {
+            outHasAnim[i] = true;
+            BoneAnimation& anim = clip.channels[searchName];
+
+            // 大きさ（Scale）
             DirectX::XMVECTOR scale = DirectX::XMVectorSet(1, 1, 1, 0);
             if (anim.scaleKeys.size() == 1) {
                 scale = DirectX::XMVectorSet(anim.scaleKeys[0].value.x, anim.scaleKeys[0].value.y, anim.scaleKeys[0].value.z, 0);
@@ -411,13 +450,12 @@ void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>&
                 float dt = anim.scaleKeys[nextIdx].time - anim.scaleKeys[idx].time;
                 float factor = (dt > 0.0f) ? (animationTime - anim.scaleKeys[idx].time) / dt : 0.0f;
                 factor = std::clamp(factor, 0.0f, 1.0f);
-
                 DirectX::XMVECTOR start = DirectX::XMVectorSet(anim.scaleKeys[idx].value.x, anim.scaleKeys[idx].value.y, anim.scaleKeys[idx].value.z, 0);
                 DirectX::XMVECTOR end = DirectX::XMVectorSet(anim.scaleKeys[nextIdx].value.x, anim.scaleKeys[nextIdx].value.y, anim.scaleKeys[nextIdx].value.z, 0);
                 scale = DirectX::XMVectorLerp(start, end, factor);
             }
 
-            // 2. 回転（Rotation）
+            // 回転（Rotation）
             DirectX::XMVECTOR rotation = DirectX::XMQuaternionIdentity();
             if (anim.rotationKeys.size() == 1) {
                 rotation = anim.rotationKeys[0].value;
@@ -431,7 +469,7 @@ void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>&
                 rotation = DirectX::XMQuaternionSlerp(anim.rotationKeys[idx].value, anim.rotationKeys[nextIdx].value, factor);
             }
 
-            // 3. 位置（Position）
+            // 位置（Position）
             DirectX::XMVECTOR position = DirectX::XMVectorSet(0, 0, 0, 1);
             if (anim.positionKeys.size() == 1) {
                 position = DirectX::XMVectorSet(anim.positionKeys[0].value.x, anim.positionKeys[0].value.y, anim.positionKeys[0].value.z, 1);
@@ -441,14 +479,13 @@ void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>&
                 int nextIdx = idx + 1;
                 float dt = anim.positionKeys[nextIdx].time - anim.positionKeys[idx].time;
                 float factor = (dt > 0.0f) ? (animationTime - anim.positionKeys[idx].time) / dt : 0.0f;
-                factor = std::clamp(factor, 0.0f, 1.0f); 
-
+                factor = std::clamp(factor, 0.0f, 1.0f);
                 DirectX::XMVECTOR start = DirectX::XMVectorSet(anim.positionKeys[idx].value.x, anim.positionKeys[idx].value.y, anim.positionKeys[idx].value.z, 1);
                 DirectX::XMVECTOR end = DirectX::XMVectorSet(anim.positionKeys[nextIdx].value.x, anim.positionKeys[nextIdx].value.y, anim.positionKeys[nextIdx].value.z, 1);
                 position = DirectX::XMVectorLerp(start, end, factor);
             }
 
-            // Scale, Rotation, Position を合成
+            // 合成
             DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScalingFromVector(scale);
             DirectX::XMMATRIX rotMat = DirectX::XMMatrixRotationQuaternion(rotation);
             DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslationFromVector(position);
