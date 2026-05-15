@@ -3,9 +3,7 @@
 #include "Common.h"
 #include "Shader.h"
 #include <WICTextureLoader.h>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+
 
 #include <filesystem>
 #include <system_error>
@@ -311,6 +309,57 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
         }
     }
 
+    if (scene->HasAnimations())
+    {
+        ExtractAnimations(scene);
+    }
+
     m_mesh.Create(device, allVertices.data(), (int)allVertices.size(), allIndices.data(), (int)allIndices.size());
     return true;
+}
+
+void Model::ExtractAnimations(const aiScene* scene) {
+    m_animations.clear();
+
+    // FBXに入っているすべてのアニメーション（走る、ジャンプなど）をループ
+    for (unsigned int i = 0; i < scene->mNumAnimations; i++) {
+        aiAnimation* aiAnim = scene->mAnimations[i];
+        AnimationClip clip;
+        clip.name = aiAnim->mName.C_Str();
+        clip.duration = (float)aiAnim->mDuration;
+        clip.ticksPerSecond = (float)(aiAnim->mTicksPerSecond != 0 ? aiAnim->mTicksPerSecond : 25.0f);
+
+        // そのアニメーションで動くボーン（チャンネル）をループ
+        for (unsigned int j = 0; j < aiAnim->mNumChannels; j++)
+        {
+            aiNodeAnim* channel = aiAnim->mChannels[j];
+            BoneAnimation boneAnim;
+            boneAnim.boneName = channel->mNodeName.C_Str();
+
+            // 位置のキーフレームを保存
+            for (unsigned int p = 0; p < channel->mNumPositionKeys; p++) {
+                auto& key = channel->mPositionKeys[p];
+                boneAnim.positionKeys.push_back({ (float)key.mTime, {key.mValue.x, key.mValue.y, key.mValue.z} });
+            }
+
+            // 回転（クォータニオン）のキーフレームを保存
+            for (unsigned int r = 0; r < channel->mNumRotationKeys; r++) {
+                auto& key = channel->mRotationKeys[r];
+                // Assimpのクォータニオンは (w, x, y, z) の順なので注意！
+                DirectX::XMVECTOR quat = DirectX::XMVectorSet(key.mValue.x, key.mValue.y, key.mValue.z, key.mValue.w);
+                boneAnim.rotationKeys.push_back({ (float)key.mTime, quat });
+            }
+
+            // スケールのキーフレームを保存
+            for (unsigned int s = 0; s < channel->mNumScalingKeys; s++) {
+                auto& key = channel->mScalingKeys[s];
+                boneAnim.scaleKeys.push_back({ (float)key.mTime, {key.mValue.x, key.mValue.y, key.mValue.z} });
+            }
+
+            // 辞書に登録
+            clip.channels[boneAnim.boneName] = boneAnim;
+        }
+
+        m_animations.push_back(clip);
+    }
 }

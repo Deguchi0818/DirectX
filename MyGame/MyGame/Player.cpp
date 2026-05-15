@@ -8,14 +8,14 @@
 void Player::Initialize(Model* model) 
 {
     pModel = model;
-    transform.SetScale(0.1f, 0.1f, 0.1f);
+    transform.SetScale(0.01f, 0.01f, 0.01f);
     transform.SetRotation(0.0f, 0.0f, 0.0f);
     transform.SetPosition(0, 0.5f, 0); // èâä˙à íu
 
    // AddCollider("foot", ColliderType::AABB, { 0, 0.0f, 0 }, { 10.0f, 1.0f, 10.0f });
-    auto& bodyCol = AddCollider("body", ColliderType::Capsule, { 0, 10.0f, 0 }, { 10.0f, 16.0f, 10.0f });
-    bodyCol.radius = 2.0f;
-    bodyCol.height = 15.0f;
+    auto& bodyCol = AddCollider("body", ColliderType::Capsule, { 0, 90.0f, 0 }, { 100.0f, 160.0f, 100.0f });
+    bodyCol.radius = 20.0f;
+    bodyCol.height = 130.0f;
     bodyCol.isTrigger = false;
     auto& headCol = AddCollider("head", ColliderType::Sphere, { 0, 19.0f, 0 }, { 10.0f, 10.0f, 10.0f });
     headCol.radius = 2.0f;
