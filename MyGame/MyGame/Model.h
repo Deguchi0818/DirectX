@@ -57,6 +57,9 @@ public:
 
     void SetToonTexture(Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> toon) { m_toonTexture = toon; }
 
+    // アニメーションの現在の姿勢を計算する関数
+    void UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim);
+
     // メッシュを描画する
     void Draw(ID3D11DeviceContext* context, Shader* shader);
 

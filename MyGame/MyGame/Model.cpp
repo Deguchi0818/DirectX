@@ -363,3 +363,97 @@ void Model::ExtractAnimations(const aiScene* scene) {
         m_animations.push_back(clip);
     }
 }
+
+// キーフレームを探すための便利なヘルパー関数
+template <typename T>
+int FindKeyIndex(float animationTime, const std::vector<AnimKeyFrame<T>>& keys) {
+    // アニメーション時間が最後のキーフレームを超えていたら、最後の区間を返す
+    if (animationTime >= keys.back().time) {
+        return (int)keys.size() - 2;
+    }
+    for (size_t i = 0; i < keys.size() - 1; i++) {
+        if (animationTime < keys[i + 1].time) {
+            return (int)i;
+        }
+    }
+    return 0;
+}
+
+void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim)
+{
+    outLocalMatrices.resize(m_bones.size(), DirectX::XMMatrixIdentity());
+    outHasAnim.resize(m_bones.size(), false);
+
+    if (m_animations.empty()) return;
+
+    AnimationClip& clip = m_animations[0];
+
+    float timeInTicks = timeInSeconds * clip.ticksPerSecond;
+    float animationTime = fmod(timeInTicks, clip.duration);
+
+    for (int i = 0; i < (int)m_bones.size(); i++)
+    {
+        std::string boneName = m_bones[i].name;
+
+        if (clip.channels.count(boneName) > 0)
+        {
+            outHasAnim[i] = true;
+            BoneAnimation& anim = clip.channels[boneName];
+
+            // 1. 大きさ（Scale）
+            DirectX::XMVECTOR scale = DirectX::XMVectorSet(1, 1, 1, 0);
+            if (anim.scaleKeys.size() == 1) {
+                scale = DirectX::XMVectorSet(anim.scaleKeys[0].value.x, anim.scaleKeys[0].value.y, anim.scaleKeys[0].value.z, 0);
+            }
+            else if (anim.scaleKeys.size() > 1) {
+                int idx = FindKeyIndex(animationTime, anim.scaleKeys);
+                int nextIdx = idx + 1;
+                float dt = anim.scaleKeys[nextIdx].time - anim.scaleKeys[idx].time;
+                float factor = (dt > 0.0f) ? (animationTime - anim.scaleKeys[idx].time) / dt : 0.0f;
+                factor = std::clamp(factor, 0.0f, 1.0f);
+
+                DirectX::XMVECTOR start = DirectX::XMVectorSet(anim.scaleKeys[idx].value.x, anim.scaleKeys[idx].value.y, anim.scaleKeys[idx].value.z, 0);
+                DirectX::XMVECTOR end = DirectX::XMVectorSet(anim.scaleKeys[nextIdx].value.x, anim.scaleKeys[nextIdx].value.y, anim.scaleKeys[nextIdx].value.z, 0);
+                scale = DirectX::XMVectorLerp(start, end, factor);
+            }
+
+            // 2. 回転（Rotation）
+            DirectX::XMVECTOR rotation = DirectX::XMQuaternionIdentity();
+            if (anim.rotationKeys.size() == 1) {
+                rotation = anim.rotationKeys[0].value;
+            }
+            else if (anim.rotationKeys.size() > 1) {
+                int idx = FindKeyIndex(animationTime, anim.rotationKeys);
+                int nextIdx = idx + 1;
+                float dt = anim.rotationKeys[nextIdx].time - anim.rotationKeys[idx].time;
+                float factor = (dt > 0.0f) ? (animationTime - anim.rotationKeys[idx].time) / dt : 0.0f;
+                factor = std::clamp(factor, 0.0f, 1.0f);
+                rotation = DirectX::XMQuaternionSlerp(anim.rotationKeys[idx].value, anim.rotationKeys[nextIdx].value, factor);
+            }
+
+            // 3. 位置（Position）
+            DirectX::XMVECTOR position = DirectX::XMVectorSet(0, 0, 0, 1);
+            if (anim.positionKeys.size() == 1) {
+                position = DirectX::XMVectorSet(anim.positionKeys[0].value.x, anim.positionKeys[0].value.y, anim.positionKeys[0].value.z, 1);
+            }
+            else if (anim.positionKeys.size() > 1) {
+                int idx = FindKeyIndex(animationTime, anim.positionKeys);
+                int nextIdx = idx + 1;
+                float dt = anim.positionKeys[nextIdx].time - anim.positionKeys[idx].time;
+                float factor = (dt > 0.0f) ? (animationTime - anim.positionKeys[idx].time) / dt : 0.0f;
+                factor = std::clamp(factor, 0.0f, 1.0f); 
+
+                DirectX::XMVECTOR start = DirectX::XMVectorSet(anim.positionKeys[idx].value.x, anim.positionKeys[idx].value.y, anim.positionKeys[idx].value.z, 1);
+                DirectX::XMVECTOR end = DirectX::XMVectorSet(anim.positionKeys[nextIdx].value.x, anim.positionKeys[nextIdx].value.y, anim.positionKeys[nextIdx].value.z, 1);
+                position = DirectX::XMVectorLerp(start, end, factor);
+            }
+
+            // Scale, Rotation, Position を合成
+            DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScalingFromVector(scale);
+            DirectX::XMMATRIX rotMat = DirectX::XMMatrixRotationQuaternion(rotation);
+            DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslationFromVector(position);
+
+            outLocalMatrices[i] = scaleMat * rotMat * transMat;
+        }
+    }
+}

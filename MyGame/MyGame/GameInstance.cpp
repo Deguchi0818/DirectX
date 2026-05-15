@@ -1,4 +1,4 @@
-#include "GameInstance.h"
+ï»¿#include "GameInstance.h"
 #include "MyMatrix4x4.h"
 #include "Transform.h"
 #include "Common.h"
@@ -75,12 +75,12 @@ void GameInstance::Update()
 
 void GameInstance::UpdateSystem() 
 {
-    // ƒfƒ‹ƒ^ƒ^ƒCƒ€‚ÌŒvZ
+    // ãƒ‡ãƒ«ã‚¿ã‚¿ã‚¤ãƒ ã®è¨ˆç®—
     auto currentTime = std::chrono::high_resolution_clock::now();
     m_deltaTime = std::chrono::duration<float>(currentTime - m_lastTime).count();
     m_lastTime = currentTime;
 
-    // 1ƒtƒŒ[ƒ€‚ª’·‚·‚¬‚½iƒfƒoƒbƒO’†’fŒã‚È‚Çj‚ÌƒXƒpƒCƒN‘Îô
+    // 1ãƒ•ãƒ¬ãƒ¼ãƒ ãŒé•·ã™ããŸæ™‚ï¼ˆãƒ‡ãƒãƒƒã‚°ä¸­æ–­å¾Œãªã©ï¼‰ã®ã‚¹ãƒ‘ã‚¤ã‚¯å¯¾ç­–
     if (m_deltaTime > 0.1f) m_deltaTime = 0.1f;
 
     Input::Update();
@@ -110,21 +110,21 @@ void GameInstance::UpdateSystem()
         static bool firstFrame = true;
         if (firstFrame)
         {
-            // Å‰‚ÌƒtƒŒ[ƒ€‚Åƒ}ƒEƒX‚ğ’†‰›‚É”ò‚Î‚·
+            // æœ€åˆã®ãƒ•ãƒ¬ãƒ¼ãƒ ã§ãƒã‚¦ã‚¹ã‚’ä¸­å¤®ã«é£›ã°ã™
             SetCursorPos(centerX, centerY);
             lastMousePos = { centerX, centerY };
             firstFrame = false;
             return;
         }
 
-        // ’†‰›‚©‚ç‚ÌˆÚ“®—Ê‚ğŒvZ
+        // ä¸­å¤®ã‹ã‚‰ã®ç§»å‹•é‡ã‚’è¨ˆç®—
         float dx = (float)(currentMousePos.x - centerX);
         float dy = (float)(currentMousePos.y - centerY);
 
-        // ƒJƒƒ‰‚ğ‰ñ“]‚³‚¹‚é
+        // ã‚«ãƒ¡ãƒ©ã‚’å›è»¢ã•ã›ã‚‹
         m_camera.Rotate(dx, dy);
 
-        // ƒ}ƒEƒX‚ğ’†‰›‚É–ß‚·
+        // ãƒã‚¦ã‚¹ã‚’ä¸­å¤®ã«æˆ»ã™
         SetCursorPos(centerX, centerY);
     }
     
@@ -132,72 +132,83 @@ void GameInstance::UpdateSystem()
 
 void GameInstance::Render()
 {
+    static float timer = 0.0f;
+    timer += m_deltaTime;
+
+    std::vector<DirectX::XMMATRIX> animMatrices;
+    std::vector<bool> hasAnim;
+    myModel.UpdateAnimation(timer, animMatrices, hasAnim);
+
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    // ‚±‚±‚ÉƒfƒoƒbƒOƒƒjƒ…[‚Ì“à—e‚ğ‘‚­
+    // ã“ã“ã«ãƒ‡ãƒãƒƒã‚°ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã®å†…å®¹ã‚’æ›¸ã
     ImGui::Begin("Debug Menu");
     ImGui::Text("Player Settings");
-    // ƒWƒƒƒ“ƒv—Í‚âˆÚ“®‘¬“x‚ğƒXƒ‰ƒCƒ_[‚Å’²®‚Å‚«‚é‚æ‚¤‚É‚·‚é
+    // ã‚¸ãƒ£ãƒ³ãƒ—åŠ›ã‚„ç§»å‹•é€Ÿåº¦ã‚’ã‚¹ãƒ©ã‚¤ãƒ€ãƒ¼ã§èª¿æ•´ã§ãã‚‹ã‚ˆã†ã«ã™ã‚‹
     ImGui::SliderFloat("Jump Power", &m_player.GetJumpPower(), 0.0f, 20.0f);
     ImGui::SliderFloat("Move Speed", &m_player.GetMoveSpeed(), 0.0f, 20.0f);
-    static int selectedBone = 10; // “®‚©‚µ‚½‚¢ƒ{[ƒ“‚Ì”Ô†
+    static int selectedBone = 10; // å‹•ã‹ã—ãŸã„ãƒœãƒ¼ãƒ³ã®ç•ªå·
     ImGui::SliderInt("Select Bone ID", &selectedBone, 0, (int)myModel.m_bones.size() - 1);
     ImGui::SliderFloat("Mouse Sensitivity", &m_camera.GetSensitivity(), 0.0001f, 0.01f);
     ImGui::SliderFloat("Right Stick Sensitivity", &m_camera.GetRightStickSensitivity(), 0.0001f, 0.1f);
+    
+    ImGui::Separator();
+    ImGui::Text("[Animation Debug]");
+    ImGui::Text("Model Bone Count: %d", (int)myModel.m_bones.size());
+    ImGui::Text("Animation Count: %d", (int)myModel.m_animations.size());
+
+    int animBoneCount = 0;
+    for (bool b : hasAnim) {
+        if (b) animBoneCount++;
+    }
+    ImGui::Text("Animated Bones: %d", animBoneCount);
+    ImGui::Text("Timer: %.2f", timer);
     ImGui::End();
 
     if (m_isDebugMode) 
     {
         ImGui::Begin("Physics Debug");
         if (m_player.m_hitHead) {
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "HEAD CRASH!"); // Ô•¶š‚Å•\¦
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "HEAD CRASH!"); // èµ¤æ–‡å­—ã§è¡¨ç¤º
         }
-        // Šm”F‚ªI‚í‚Á‚½‚çƒtƒ‰ƒO‚ğ–ß‚·ˆ—‚È‚Ç
+        // ç¢ºèªãŒçµ‚ã‚ã£ãŸã‚‰ãƒ•ãƒ©ã‚°ã‚’æˆ»ã™å‡¦ç†ãªã©
         if (ImGui::Button("Reset Flag")) m_player.m_hitHead = false;
         ImGui::End();
     }
 
-    // •`‰æŠJn
+    // æç”»é–‹å§‹
     m_graphics.BeginScene(0.1f, 0.2f, 0.4f, 1.0f);
 
     auto context = m_graphics.GetContext();
 
-    static float timer = 0.0f;
-    timer += m_deltaTime;
 
-    // GPU‚É‘—‚éÅI“I‚Ès—ñ
+
+    // GPUã«é€ã‚‹æœ€çµ‚çš„ãªè¡Œåˆ—
     std::vector<DirectX::XMMATRIX> finalBones(256, DirectX::XMMatrixIdentity());
-    // GPU‚É‘—‚éÅI“I‚Ès—ñ
+    // GPUã«é€ã‚‹æœ€çµ‚çš„ãªè¡Œåˆ—
     std::vector<DirectX::XMMATRIX> worldMatrices(256, DirectX::XMMatrixIdentity());
-   
-    std::vector<DirectX::XMMATRIX> localMatrices(myModel.m_bones.size(), DirectX::XMMatrixIdentity());
-    for (int i = 0; i < (int)myModel.m_bones.size(); i++) {
-        if (i == selectedBone) {
-            localMatrices[i] = DirectX::XMMatrixRotationZ(timer);
-        }
-    }
 
-    // ƒ{[ƒ“‚ÌŠK‘w‡‚ÉŒvZ‚·‚é‚½‚ß‚ÌÄ‹Aˆ—
+    // ãƒœãƒ¼ãƒ³ã®éšå±¤é †ã«è¨ˆç®—ã™ã‚‹ãŸã‚ã®å†å¸°å‡¦ç†
     std::vector<bool> isCalculated(myModel.m_bones.size(), false);
 
     std::function<void(int)> CalcBoneMatrix = [&](int boneIdx) {
-        if (isCalculated[boneIdx]) return; // Šù‚ÉŒvZÏ‚İ‚È‚çƒXƒLƒbƒv
+        if (isCalculated[boneIdx]) return; // æ—¢ã«è¨ˆç®—æ¸ˆã¿ãªã‚‰ã‚¹ã‚­ãƒƒãƒ—
 
         int parentIdx = myModel.m_bones[boneIdx].parentIndex;
 
-        // e‚ª‚¢‚é‚È‚çA©•ª‚ÌŒvZ‚Ì‘O‚Ée‚ğŒvZ‚³‚¹‚é
+        // è¦ªãŒã„ã‚‹ãªã‚‰ã€è‡ªåˆ†ã®è¨ˆç®—ã®å‰ã«è¦ªã‚’è¨ˆç®—ã•ã›ã‚‹
         if (parentIdx != -1) {
             CalcBoneMatrix(parentIdx);
         }
 
 
         DirectX::XMVECTOR det;
-        // ©•ª‚Ì‰Šúp¨
+        // è‡ªåˆ†ã®åˆæœŸå§¿å‹¢
         DirectX::XMMATRIX globalBind = DirectX::XMMatrixInverse(&det, myModel.m_bones[boneIdx].offset);
 
-        // e‚©‚ç‚Ì‘Š‘Î“I‚ÈˆÊ’uiƒ[ƒJƒ‹‹óŠÔ‚Ì‰Šúp¨j‚ğŒvZ
+        // è¦ªã‹ã‚‰ã®ç›¸å¯¾çš„ãªä½ç½®ï¼ˆãƒ­ãƒ¼ã‚«ãƒ«ç©ºé–“ã®åˆæœŸå§¿å‹¢ï¼‰ã‚’è¨ˆç®—
         DirectX::XMMATRIX localBind;
         if (parentIdx != -1) 
         {
@@ -207,34 +218,60 @@ void GameInstance::Render()
             localBind = globalBind;
         }
 
-        DirectX::XMMATRIX newLocal = localMatrices[boneIdx] * localBind;
+        DirectX::XMMATRIX newLocal;
+        if (hasAnim[boneIdx]) 
+        {
+            if (parentIdx != -1) 
+            {
+                DirectX::XMVECTOR bindScale, bindRot, bindTrans;
+                DirectX::XMMatrixDecompose(&bindScale, &bindRot, &bindTrans, localBind);
 
-        if (parentIdx != -1) {
+                DirectX::XMVECTOR animScale, animRot, animTrans;
+                DirectX::XMMatrixDecompose(&animScale, &animRot, &animTrans, animMatrices[boneIdx]);
+
+                animRot = DirectX::XMQuaternionNormalize(animRot);
+
+                newLocal = DirectX::XMMatrixScalingFromVector(bindScale) *
+                    DirectX::XMMatrixRotationQuaternion(animRot) *
+                    DirectX::XMMatrixTranslationFromVector(bindTrans);
+            }
+            else 
+            {
+                // ãƒ«ãƒ¼ãƒˆãƒœãƒ¼ãƒ³ï¼ˆä¸€ç•ªè¦ªã®è…°ãªã©ï¼‰ã¯ã€æ­©ããƒ»ã‚¸ãƒ£ãƒ³ãƒ—ã™ã‚‹ç­‰ã®ç§»å‹•é‡ãŒå«ã¾ã‚Œã‚‹ã®ã§ãã®ã¾ã¾ä½¿ã†
+                newLocal = animMatrices[boneIdx];
+            }
+        }
+        else 
+        {
+            newLocal = localBind;
+        }
+
+        if (parentIdx != -1) 
+        {
             worldMatrices[boneIdx] = newLocal * worldMatrices[parentIdx];
         }
-        else {
+        else 
+        {
             worldMatrices[boneIdx] = newLocal;
         }
 
         isCalculated[boneIdx] = true;
         };
 
-    // ‘S‚Ä‚Ìƒ{[ƒ“‚É‘Î‚µ‚ÄÄ‹AŒvZ‚ğÀs
-    for (int i = 0; i < (int)myModel.m_bones.size(); i++) {
+    // å…¨ã¦ã®ãƒœãƒ¼ãƒ³ã«å¯¾ã—ã¦å†å¸°è¨ˆç®—ã‚’å®Ÿè¡Œ
+    for (int i = 0; i < (int)myModel.m_bones.size(); i++) 
+    {
         CalcBoneMatrix(i);
     }
 
-    // ÅŒã‚ÉƒXƒLƒjƒ“ƒOs—ñ‚ğŠm’è‚³‚¹‚é
-    for (int i = 0; i < (int)myModel.m_bones.size(); i++) {
+    // æœ€å¾Œã«ã‚¹ã‚­ãƒ‹ãƒ³ã‚°è¡Œåˆ—ã‚’ç¢ºå®šã•ã›ã‚‹
+    for (int i = 0; i < (int)myModel.m_bones.size(); i++) 
+    {
         finalBones[i] = myModel.m_bones[i].offset * worldMatrices[i];
     }
 
-    // ÅŒã‚ÉƒVƒF[ƒ_[—ps—ñ‚ğŠm’è
-    for (int i = 0; i < (int)myModel.m_bones.size(); i++) {
-        finalBones[i] = myModel.m_bones[i].offset * worldMatrices[i];
-    }
 
-    // GPU‚Ö“]‘—
+    // GPUã¸è»¢é€
     m_baseShader.UpdateBones(context, finalBones);
     m_baseShader.Bind(context);
 
@@ -242,12 +279,12 @@ void GameInstance::Render()
     ImGui::Text("Model Bone Count: %d", (int)myModel.m_bones.size());
     ImGui::End();
 
-    // s—ñ‚Ì€”õ
+    // è¡Œåˆ—ã®æº–å‚™
     auto view = m_camera.GetViewMatrix();
     float aspect = 1280.0f / 720.0f;
     auto proj = m_camera.GetProjectionMatrix(aspect);
 
-    // ‘S‚Ä‚ÌƒIƒuƒWƒFƒNƒg‚ğ•`‰æ‚·‚éƒ‹[ƒv
+    // å…¨ã¦ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’æç”»ã™ã‚‹ãƒ«ãƒ¼ãƒ—
     for (auto& obj : m_gameObjects)
     {
         obj.Draw(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
@@ -265,10 +302,10 @@ void GameInstance::Render()
 
     if (m_isDebugMode)
     {
-        // ƒvƒŒƒCƒ„[‚ÌƒRƒ‰ƒCƒ_[‚ğí‚É•\¦‚·‚éİ’è
+        // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’å¸¸ã«è¡¨ç¤ºã™ã‚‹è¨­å®š
         m_player.m_showCollider = true;
 
-        // ƒRƒ‰ƒCƒ_[‚ğ DebugRenderer ‚É“o˜^‚·‚é‚½‚ß‚Ì•Ö—˜‚Èƒ‰ƒ€ƒ_®iŠÖ”“àŠÖ”j
+        // ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’ DebugRenderer ã«ç™»éŒ²ã™ã‚‹ãŸã‚ã®ä¾¿åˆ©ãªãƒ©ãƒ ãƒ€å¼ï¼ˆé–¢æ•°å†…é–¢æ•°ï¼‰
         auto AddCollidersToDebug = [&](GameObject& obj) {
             if (!obj.m_showCollider) return;
 
@@ -276,43 +313,43 @@ void GameInstance::Render()
             {
                 if (col.type == ColliderType::AABB) {
                     AABB worldAABB = col.GetWorldAABB(obj.transform.GetPosition(), obj.transform.GetScale());
-                    m_debugRenderer.AddAABB(worldAABB, { 0.0f, 1.0f, 0.0f, 1.0f }); // —ÎF
+                    m_debugRenderer.AddAABB(worldAABB, { 0.0f, 1.0f, 0.0f, 1.0f }); // ç·‘è‰²
                 }
                 else if (col.type == ColliderType::Sphere) {
                     Sphere worldSphere = col.GetWorldSphere(obj.transform.GetPosition(), obj.transform.GetScale());
-                    m_debugRenderer.AddSphere(worldSphere, { 1.0f, 0.0f, 0.0f, 1.0f }); // ÔF
+                    m_debugRenderer.AddSphere(worldSphere, { 1.0f, 0.0f, 0.0f, 1.0f }); // èµ¤è‰²
                 }
                 else if (col.type == ColliderType::Capsule)
                 {
                     Capsule worldCapsule = col.GetWorldCapsule(obj.transform.GetPosition(), obj.transform.GetScale());
-                    m_debugRenderer.AddCapsule(worldCapsule, { 1.0f, 0.0f, 0.0f, 1.0f }); // ÔF‚Å•`‰æ
+                    m_debugRenderer.AddCapsule(worldCapsule, { 1.0f, 0.0f, 0.0f, 1.0f }); // èµ¤è‰²ã§æç”»
                 }
             }
             };
 
-        // ƒvƒŒƒCƒ„[‚ÌƒRƒ‰ƒCƒ_[‚ğ“o˜^
+        // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’ç™»éŒ²
         AddCollidersToDebug(m_player);
 
-        // ƒQ[ƒ€ƒIƒuƒWƒFƒNƒg‚ÌƒRƒ‰ƒCƒ_[‚ğ“o˜^
+        // ã‚²ãƒ¼ãƒ ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’ç™»éŒ²
         for (auto& obj : m_gameObjects) {
-            // ƒeƒXƒg—p‚É‘S•”•\¦‚µ‚½‚¢ê‡‚ÍƒRƒƒ“ƒgƒAƒEƒg‚ğŠO‚·
+            // ãƒ†ã‚¹ãƒˆç”¨ã«å…¨éƒ¨è¡¨ç¤ºã—ãŸã„å ´åˆã¯ã‚³ãƒ¡ãƒ³ãƒˆã‚¢ã‚¦ãƒˆã‚’å¤–ã™
             // obj.m_showCollider = true; 
             AddCollidersToDebug(obj);
         }
 
-        // ’nŒ`(Terrain)‚ÌƒRƒ‰ƒCƒ_[‚ğ“o˜^
+        // åœ°å½¢(Terrain)ã®ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’ç™»éŒ²
         for (auto& obj : m_terrain) {
             // obj.m_showCollider = true;
             AddCollidersToDebug(obj);
         }
 
-        // “o˜^‚µ‚½‚·‚×‚Ä‚Ìü‚ğ GPU ‚É‘—‚Á‚Ä•`‰æ‚·‚éI
+        // ç™»éŒ²ã—ãŸã™ã¹ã¦ã®ç·šã‚’ GPU ã«é€ã£ã¦æç”»ã™ã‚‹ï¼
         MyMatrix4x4 viewProj = MyMatrix4x4::Multiply(view, proj);
         DirectX::XMMATRIX xmViewProj = DirectX::XMLoadFloat4x4((const DirectX::XMFLOAT4X4*)viewProj.m);
         m_debugRenderer.Render(context, xmViewProj);
     }
 
-    //•`‰æI—¹
+    //æç”»çµ‚äº†
     m_graphics.EndScene();
 }
 
@@ -320,9 +357,9 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 {
     if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
 
-    if (!myModel.LoadFromFile(device, "Asset/Idle.fbx")) 
+    if (!myModel.LoadFromFile(device, "Asset/Fast Run.fbx")) 
     {
-        MessageBox(nullptr, L"PMX‚Ì“Ç‚İ‚İ‚É¸”s‚µ‚Ü‚µ‚½BƒpƒX‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢B", L"Error", MB_OK);
+        MessageBox(nullptr, L"PMXã®èª­ã¿è¾¼ã¿ã«å¤±æ•—ã—ã¾ã—ãŸã€‚ãƒ‘ã‚¹ã‚’ç¢ºèªã—ã¦ãã ã•ã„ã€‚", L"Error", MB_OK);
         return false;
     }
 
@@ -331,9 +368,9 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 
     if (SUCCEEDED(hr)) {
         myModel.SetToonTexture(toonSRV);
-        m_cubeModel.SetToonTexture(toonSRV);   // —§•û‘Ì
-        m_planeModel.SetToonTexture(toonSRV);  // ’n–Ê
-        m_playerModel.SetToonTexture(toonSRV);  // ’n–Ê
+        m_cubeModel.SetToonTexture(toonSRV);   // ç«‹æ–¹ä½“
+        m_planeModel.SetToonTexture(toonSRV);  // åœ°é¢
+        m_playerModel.SetToonTexture(toonSRV);  // åœ°é¢
     }
 
     myModel.SetToonTexture(toonSRV);
@@ -342,11 +379,11 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
     m_playerModel.CreateCube(device, 1.0f, { 0.5f, 0.0f, 0.0f, 1.0f });
     m_planeModel.CreatePlane(device, 1.0f, 1.0f, { 0.0f, 0.5f, 0.0f, 1.0f });
 
-    // ’è”ƒoƒbƒtƒ@ì¬
+    // å®šæ•°ãƒãƒƒãƒ•ã‚¡ä½œæˆ
     D3D11_BUFFER_DESC cbDesc = {};
     cbDesc.ByteWidth = sizeof(ConstantBufferData);
     cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    cbDesc.Usage = D3D11_USAGE_DYNAMIC;          // “®“I‚É•ÏX‰Â”\‚É‚·‚é
+    cbDesc.Usage = D3D11_USAGE_DYNAMIC;          // å‹•çš„ã«å¤‰æ›´å¯èƒ½ã«ã™ã‚‹
     cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     device->CreateBuffer(&cbDesc, nullptr, &m_constantBuffer);
     m_debugRenderer.Initialize(device);
@@ -360,7 +397,7 @@ void GameInstance::CreateScene()
     m_terrain.clear();
 
 
-    // ƒIƒuƒWƒFƒNƒg‚Ì”z’u
+    // ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®é…ç½®
     GameObject floor;
     floor.pModel = &m_planeModel;
     floor.transform.SetPosition(0, 0, 0);
@@ -404,10 +441,10 @@ void GameInstance::CreateScene()
 
 
     //GameObject character;
-    //character.pModel = &myModel; // ‚³‚«‚Ù‚Ç“Ç‚İ‚ñ‚¾ƒ‚ƒfƒ‹‚ğƒZƒbƒg
-    //character.transform.SetPosition(0.0f, 1.0f, 0.0f); // À•W‚ğİ’è
+    //character.pModel = &myModel; // ã•ãã»ã©èª­ã¿è¾¼ã‚“ã ãƒ¢ãƒ‡ãƒ«ã‚’ã‚»ãƒƒãƒˆ
+    //character.transform.SetPosition(0.0f, 1.0f, 0.0f); // åº§æ¨™ã‚’è¨­å®š
     //character.transform.SetRotation(0.0f, 0.0f, 0.0);
-    //character.transform.SetScale(1.0f, 1.0f, 1.0f);    // ƒTƒCƒY‚ğ’²®
+    //character.transform.SetScale(1.0f, 1.0f, 1.0f);    // ã‚µã‚¤ã‚ºã‚’èª¿æ•´
 
     //m_gameObjects.push_back(character);
 
@@ -422,11 +459,11 @@ void GameInstance::CreateScene()
     {
         if (obj.isStatic)
         {
-            m_physics.AddStaticObject(&obj);  // ƒRƒCƒ“‚È‚Ç‚Í‚±‚Á‚¿
+            m_physics.AddStaticObject(&obj);  // ã‚³ã‚¤ãƒ³ãªã©ã¯ã“ã£ã¡
         }
         else
         {
-            m_physics.AddDynamicObject(&obj); // –Ø” ‚È‚Ç‚Í‚±‚Á‚¿
+            m_physics.AddDynamicObject(&obj); // æœ¨ç®±ãªã©ã¯ã“ã£ã¡
         }
     }
 
