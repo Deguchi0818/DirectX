@@ -49,7 +49,7 @@ bool Graphics::Initialize(HWND hWnd, int width, int height) {
     //rd.FillMode = D3D11_FILL_WIREFRAME;
     rd.CullMode = D3D11_CULL_BACK;
 
-    // C³: ƒƒ“ƒo•Ï” m_rasterizerState ‚É’¼Úì¬‚µ‚Ä•Û‘¶‚·‚é
+    //@ƒƒ“ƒo•Ï” m_rasterizerState ‚É’¼Úì¬‚µ‚Ä•Û‘¶‚·‚é
     m_device->CreateRasterizerState(&rd, &m_rasterizerState);
     m_context->RSSetState(m_rasterizerState.Get());
 

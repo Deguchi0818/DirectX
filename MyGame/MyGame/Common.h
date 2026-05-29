@@ -54,3 +54,9 @@ struct AABB {
     MyVector3 min; // 左下奥の点
     MyVector3 max; // 右上前の点
 };
+
+struct Capsule {
+    MyVector3 p1;     // 上の半球の中心点
+    MyVector3 p2;     // 下の半球の中心点
+    float radius;     // 半径
+};

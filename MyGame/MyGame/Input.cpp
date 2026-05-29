@@ -66,7 +66,7 @@ float Input::GetAxisX() {
 
     float raw = (float)m_currentControllerState.Gamepad.sThumbLX;   // 生の値
 	float deadzone = (float)XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE;     // システム既定のデッドゾーン
-    float maxValue = 32767.0f;  // ショート型の最大値
+    float maxValue = 32767.0f;
 
     // スティックの傾きがデッドゾーン以下なら、完全に 0 とみなす
     if (abs(raw) < deadzone) return 0.0f;

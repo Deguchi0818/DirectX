@@ -126,7 +126,7 @@ void Model::Draw(ID3D11DeviceContext* context, Shader* shader) {
             context->PSSetShaderResources(0, 1, subset.textureView.GetAddressOf());
         }
         else {
-            // 修正: テクスチャがない場合は nullptr をセットして前の設定をクリアする
+            // テクスチャがない場合は nullptr をセットして前の設定をクリアする
             ID3D11ShaderResourceView* nullSRV = nullptr;
             context->PSSetShaderResources(0, 1, &nullSRV);
         }
@@ -424,7 +424,6 @@ void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>&
                 size_t pos3 = pureChannelName.find("_$");
                 if (pos3 != std::string::npos) pureChannelName = pureChannelName.substr(0, pos3);
 
-                // 🌟 超重要: find() ではなく == で完全一致を見る！（Spine と Spine1 の誤爆を防ぐ）
                 if (pureBoneName == pureChannelName)
                 {
                     searchName = pair.first;
@@ -433,7 +432,6 @@ void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>&
             }
         }
 
-        // 吸収した名前（searchName）を使って検索！
         if (clip.channels.count(searchName) > 0)
         {
             outHasAnim[i] = true;

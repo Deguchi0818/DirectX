@@ -35,9 +35,9 @@ struct BoneAnimation {
 
 struct AnimationClip {
     std::string name;
-    float duration;            // アニメーションの長さ（ティック数）
-    float ticksPerSecond;      // 1秒あたりのティック数（速度）
-    std::map<std::string, BoneAnimation> channels; // ボーン名で検索できる辞書
+    float duration;                                 // アニメーションの長さ（ティック数）
+    float ticksPerSecond;                           // 1秒あたりのティック数（速度）
+    std::map<std::string, BoneAnimation> channels;  // ボーン名で検索できる辞書
 };
 
 class Model {

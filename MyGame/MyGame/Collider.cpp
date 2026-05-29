@@ -73,14 +73,15 @@ MyVector3 Collider::GetClosestPointOnLineSegment(const MyVector3& A, const MyVec
 	t = Clamp(t, 0.0f, 1.0f);
 
     // 最近接点の座標を計算して返す
-	return {
+	return 
+    {
 		A.x + AB.x * t,
 		A.y + AB.y * t,
 		A.z + AB.z * t
 	};
 }
 
-
+// Sphereの当たり判定
 bool Collider::SphereCollider(const Sphere& a, const Sphere& b) 
 {
 	float dx = a.x - b.x;
@@ -98,6 +99,7 @@ bool Collider::SphereCollider(const Sphere& a, const Sphere& b)
 	return distanceSq <= radiusSumSq;
 }
 
+// AABBコライダーの当たり判定
 bool Collider::AABBCollider(const AABB& a, const AABB& b) 
 {
 	if (a.max.x < b.min.x || a.min.x > b.max.x) return false;
@@ -107,6 +109,7 @@ bool Collider::AABBCollider(const AABB& a, const AABB& b)
 	return true;
 }
 
+// SphereとAABBの当たり判定
 bool Collider::SphereVsAABB(const Sphere& sphere, const AABB& aabb) 
 {
     float closestX = Clamp(sphere.x, aabb.min.x, aabb.max.x);
@@ -123,6 +126,7 @@ bool Collider::SphereVsAABB(const Sphere& sphere, const AABB& aabb)
     return distanceSq <= (sphere.radius * sphere.radius);
 }
 
+// カプセルとAABBの当たり判定
 bool Collider::CapsuleVsAABB(const Capsule& capsule, const AABB& aabb) 
 {
     float minY = std::min(capsule.p1.y, capsule.p2.y);
@@ -145,9 +149,10 @@ bool Collider::CapsuleVsAABB(const Capsule& capsule, const AABB& aabb)
 	return distanceSq <= (capsule.radius * capsule.radius);
 }
 
+// カプセルとSphereの当たり判定
 bool Collider::CapsuleVsSphere(const Capsule& capsule, const Sphere& sphere) 
 {
-    // カプセルの中心線（p1からp2）上で、球の中心（コイン）に最も近い点を探す
+    // カプセルの中心線（p1からp2）上で、球の中心に最も近い点を探す
     MyVector3 closestPoint = GetClosestPointOnLineSegment(capsule.p1, capsule.p2, { sphere.x, sphere.y, sphere.z });
     
     // その最近接点から、球の中心までの距離（の二乗）を計算する

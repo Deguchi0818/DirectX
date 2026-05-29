@@ -38,15 +38,12 @@ float4 main(PS_INPUT input) : SV_TARGET
     //float4 shadowFactor = toon.Sample(samp, toonUV);
 
     //return baseColor * (shadowFactor * 0.5f + 0.5f);
-    float shadow;
-    if (diffuse > 0.0f)
-    {
-        shadow = 1.0f;
-    }
-    else
-    {
-        shadow = 0.6f;
-    }
+
+    float halfLambert = diffuse * 0.5f + 0.5f;
+
+    float shadow = smoothstep(0.49f, 0.51f, halfLambert);
+
+    shadow = shadow * 0.4f + 0.6f;
     
     return baseColor * shadow;
 }
