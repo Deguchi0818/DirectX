@@ -137,7 +137,8 @@ void GameInstance::Render()
 
     std::vector<DirectX::XMMATRIX> animMatrices;
     std::vector<bool> hasAnim;
-    myModel.UpdateAnimation(timer, animMatrices, hasAnim);
+    std::string currentAnim = m_player.GetCurrentAnimName();
+    myModel.UpdateAnimation(currentAnim, timer, animMatrices, hasAnim);
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -356,11 +357,10 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 {
     if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
 
-    if (!myModel.LoadFromFile(device, "Asset/Idle.fbx")) 
-    {
-        MessageBox(nullptr, L"PMXの読み込みに失敗しました。パスを確認してください。", L"Error", MB_OK);
-        return false;
-    }
+    myModel.LoadFromFile(device, "Asset/Idle.fbx", "Idle");
+
+    myModel.LoadAnimation("Running", "Asset/Running.fbx");
+    myModel.LoadAnimation("Jump","Asset/Jump.fbx");
 
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> toonSRV;
     HRESULT hr = DirectX::CreateWICTextureFromFile(device, L"Asset/test/toon.png", nullptr, &toonSRV);

@@ -54,12 +54,16 @@ public:
     // 平面モデルを作成
     void CreatePlane(ID3D11Device* device, float width, float depth, const MyVector4& color);
 
-    bool LoadFromFile(ID3D11Device* device, const std::string& filename);
+    bool LoadFromFile(ID3D11Device* device, const std::string& filename, const std::string& defaultAnimName = "");
+   
+    bool LoadAnimation(const std::string& animName, const std::string& filename);
 
     void SetToonTexture(Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> toon) { m_toonTexture = toon; }
 
     // アニメーションの現在の姿勢を計算する関数
-    void UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim);
+    void UpdateAnimation(const std::string& animName, float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim);
+
+
 
     // メッシュを描画する
     void Draw(ID3D11DeviceContext* context, Shader* shader);
@@ -68,7 +72,7 @@ public:
     std::vector<BoneInfo> m_bones;
 
     // アニメーションデータを保存する配列
-    std::vector<AnimationClip> m_animations;
+    std::map<std::string, AnimationClip> m_animations;
 private:
     Mesh m_mesh;
 
@@ -77,5 +81,5 @@ private:
     Microsoft::WRL::ComPtr<ID3D11SamplerState> m_samplerState;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_toonTexture;
 
-    void ExtractAnimations(const aiScene* scene);
+    void ExtractAnimations(const aiScene* scene, const std::string& animName);
 };

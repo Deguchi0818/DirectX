@@ -138,7 +138,8 @@ void Model::Draw(ID3D11DeviceContext* context, Shader* shader) {
     context->PSSetShaderResources(0, 2, nullSRVs);
 }
 
-bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
+bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename, const std::string& defaultAnimName)
+{
     m_bones.clear();
     m_subsets.clear();
     Assimp::Importer importer;
@@ -311,23 +312,23 @@ bool Model::LoadFromFile(ID3D11Device* device, const std::string& filename) {
         }
     }
 
-    if (scene->HasAnimations())
+    if (scene->HasAnimations() && !defaultAnimName.empty())
     {
-        ExtractAnimations(scene);
+        ExtractAnimations(scene, defaultAnimName);
     }
 
     m_mesh.Create(device, allVertices.data(), (int)allVertices.size(), allIndices.data(), (int)allIndices.size());
     return true;
 }
 
-void Model::ExtractAnimations(const aiScene* scene) {
-    m_animations.clear();
+void Model::ExtractAnimations(const aiScene* scene, const std::string& animName) {
+    //m_animations.clear();
 
     // FBXに入っているすべてのアニメーション（走る、ジャンプなど）をループ
     for (unsigned int i = 0; i < scene->mNumAnimations; i++) {
         aiAnimation* aiAnim = scene->mAnimations[i];
         AnimationClip clip;
-        clip.name = aiAnim->mName.C_Str();
+        clip.name = animName;
         clip.duration = (float)aiAnim->mDuration;
         clip.ticksPerSecond = (float)(aiAnim->mTicksPerSecond != 0 ? aiAnim->mTicksPerSecond : 25.0f);
 
@@ -362,7 +363,7 @@ void Model::ExtractAnimations(const aiScene* scene) {
             clip.channels[boneAnim.boneName] = boneAnim;
         }
 
-        m_animations.push_back(clip);
+        m_animations[animName] = clip;
     }
 }
 
@@ -381,14 +382,16 @@ int FindKeyIndex(float animationTime, const std::vector<AnimKeyFrame<T>>& keys) 
     return 0;
 }
 
-void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim)
+void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim)
 {
     outLocalMatrices.resize(m_bones.size(), DirectX::XMMatrixIdentity());
     outHasAnim.resize(m_bones.size(), false);
 
     if (m_animations.empty()) return;
 
-    AnimationClip& clip = m_animations[0];
+    AnimationClip& clip = m_animations[animName];
+
+    //AnimationClip& clip = m_animations[0];
 
     float timeInTicks = timeInSeconds * clip.ticksPerSecond;
     float animationTime = fmod(timeInTicks, clip.duration);
@@ -491,4 +494,22 @@ void Model::UpdateAnimation(float timeInSeconds, std::vector<DirectX::XMMATRIX>&
             outLocalMatrices[i] = scaleMat * rotMat * transMat;
         }
     }
+}
+
+bool Model::LoadAnimation(const std::string& animName, const std::string& filename) {
+    Assimp::Importer importer;
+
+    // バケモノ化を防ぐ魔法の設定はここでも必須！
+    importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
+
+    // アニメーションだけ欲しいので、メッシュの計算（Triangulateなど）は不要。左手系変換だけ行う。
+    const aiScene* scene = importer.ReadFile(filename, aiProcess_ConvertToLeftHanded);
+
+    if (!scene || !scene->mRootNode) return false;
+
+    // アニメーションが入っていれば、リストに追記する！
+    if (scene->HasAnimations()) {
+        ExtractAnimations(scene, animName);
+    }
+    return true;
 }

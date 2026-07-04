@@ -46,6 +46,7 @@ void Player::Update(float dt, float camYaw)
     float len = sqrtf(moveX * moveX + moveZ * moveZ);
     if (len > 0.0f)
     {
+        m_state = PlayerState::Run;
         // “ü—Í‚Ì‹­‚³‚ð•Û‘¶
         float inputIntensity = (len > 1.0f) ? 1.0f : len;
 
@@ -73,6 +74,7 @@ void Player::Update(float dt, float camYaw)
     }
     else
     {
+        m_state = PlayerState::Idle;
         //vel.x = 0.0f;
         //vel.z = 0.0f;
     }
@@ -85,6 +87,8 @@ void Player::Update(float dt, float camYaw)
     if (Input::GetKey(VK_SPACE) && (m_isGrounded || coyoteTimer >= 0) || 
         Input::GetButtonDown(XINPUT_GAMEPAD_A) && (m_isGrounded || coyoteTimer >= 0))
     {
+        if(m_isGrounded == false)
+        m_state = PlayerState::Jump;
         vel.y = m_jumpPower;
         m_isGrounded = false;
         coyoteTimer = -1.0f;
