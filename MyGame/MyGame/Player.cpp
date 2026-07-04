@@ -8,6 +8,11 @@
 void Player::Initialize(Model* model) 
 {
     pModel = model;
+
+    m_stateAnimMap[PlayerState::Idle] = "Idle";
+    m_stateAnimMap[PlayerState::Run] = "Running";
+    m_stateAnimMap[PlayerState::Jump] = "Jump";
+
     transform.SetScale(0.01f, 0.01f, 0.01f);
     transform.SetRotation(0.0f, 0.0f, 0.0f);
     transform.SetPosition(0, 0.5f, 0); // 初期位置
@@ -43,10 +48,12 @@ void Player::Update(float dt, float camYaw)
 
     MyVector3 vel = GetVelocity();
 
+    UpdateAnimTimer(dt);
+
     float len = sqrtf(moveX * moveX + moveZ * moveZ);
     if (len > 0.0f)
     {
-        m_state = PlayerState::Run;
+        if (m_isGrounded) m_state = PlayerState::Run;
         // 入力の強さを保存
         float inputIntensity = (len > 1.0f) ? 1.0f : len;
 
@@ -74,7 +81,7 @@ void Player::Update(float dt, float camYaw)
     }
     else
     {
-        m_state = PlayerState::Idle;
+        if (m_isGrounded) m_state = PlayerState::Idle;
         //vel.x = 0.0f;
         //vel.z = 0.0f;
     }
@@ -84,10 +91,9 @@ void Player::Update(float dt, float camYaw)
         coyoteTimer -= dt;
     }
 
-    if (Input::GetKey(VK_SPACE) && (m_isGrounded || coyoteTimer >= 0) || 
+    if (Input::GetKeyDown(VK_SPACE) && (m_isGrounded || coyoteTimer >= 0) || 
         Input::GetButtonDown(XINPUT_GAMEPAD_A) && (m_isGrounded || coyoteTimer >= 0))
     {
-        if(m_isGrounded == false)
         m_state = PlayerState::Jump;
         vel.y = m_jumpPower;
         m_isGrounded = false;
@@ -97,6 +103,17 @@ void Player::Update(float dt, float camYaw)
     SetVelocity(vel);
 
     m_isGrounded = false;
+
+    if (m_stateAnimMap.count(m_state) > 0) {
+        if (m_state == PlayerState::Jump) {
+            // ジャンプの時だけ、しゃがみ（予備動作）を飛ばして 0.3秒目 から再生する！
+            PlayAnimation(m_stateAnimMap[m_state], 0.7f);
+        }
+        else {
+            // 走る・待機などは今まで通り 0.0秒目 から再生
+            PlayAnimation(m_stateAnimMap[m_state], 0.0f);
+        }
+    }
 }
 
 void Player::OnCollisionEnter(std::string myCol, GameObject* other, std::string otherCol)

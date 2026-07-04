@@ -24,8 +24,7 @@ public:
 	float& GetJumpPower(){ return m_jumpPower; }
 	float& GetMoveSpeed() { return m_moveSpeed; }
 	std::string GetCurrentAnimName() const {
-		if (m_state == PlayerState::Run) return "Running";
-		return "Idle";
+		return m_stateAnimMap.at(m_state);
 	}
 	bool m_hitHead = false;
 
@@ -38,6 +37,7 @@ private:
 	float coyoteTime = 0.2f;
 	bool m_isGrounded = false;
 	PlayerState m_state = PlayerState::Idle;
+	std::map<PlayerState, std::string> m_stateAnimMap;
 
 };
 

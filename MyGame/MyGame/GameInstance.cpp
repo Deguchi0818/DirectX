@@ -138,7 +138,9 @@ void GameInstance::Render()
     std::vector<DirectX::XMMATRIX> animMatrices;
     std::vector<bool> hasAnim;
     std::string currentAnim = m_player.GetCurrentAnimName();
-    myModel.UpdateAnimation(currentAnim, timer, animMatrices, hasAnim);
+    float animTime = m_player.GetAnimTimer();
+    bool isLoop = (currentAnim != "Jump");
+    myModel.UpdateAnimation(currentAnim, animTime, animMatrices, hasAnim);
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();

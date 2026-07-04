@@ -11,6 +11,10 @@
 
 class GameObject
 {
+protected:
+    std::string m_currentAnim = "Idle";
+    float m_animTimer = 0.0f;
+
 public:
 	Transform transform;
     Model* pModel;
@@ -84,5 +88,19 @@ public:
 
         return m_colliders.back();
     }
+
+    void PlayAnimation(const std::string& animName, float startTime = 0.0f) {
+        // 今と違うアニメーションを指示された時だけ、名前を書き換えてタイマーを0に戻す
+        if (m_currentAnim != animName) {
+            m_currentAnim = animName;
+            m_animTimer = startTime;
+        }
+    }
+
+    std::string GetCurrentAnimName() const { return m_currentAnim; }
+    float GetAnimTimer() const { return m_animTimer; }
+
+    // タイマーを進める関数
+    void UpdateAnimTimer(float dt) { m_animTimer += dt; }
 };
 

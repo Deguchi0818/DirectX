@@ -61,7 +61,7 @@ public:
     void SetToonTexture(Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> toon) { m_toonTexture = toon; }
 
     // アニメーションの現在の姿勢を計算する関数
-    void UpdateAnimation(const std::string& animName, float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim);
+    void UpdateAnimation(const std::string& animName, float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim, bool isLoop = true);
 
 
 

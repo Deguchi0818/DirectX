@@ -382,9 +382,9 @@ int FindKeyIndex(float animationTime, const std::vector<AnimKeyFrame<T>>& keys) 
     return 0;
 }
 
-void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim)
+void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim, bool isLoop)
 {
-    outLocalMatrices.resize(m_bones.size(), DirectX::XMMatrixIdentity());
+    outLocalMatrices.resize(m_bones.size(), DirectX::XMMatrixIdentity());               
     outHasAnim.resize(m_bones.size(), false);
 
     if (m_animations.empty()) return;
@@ -395,6 +395,15 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
 
     float timeInTicks = timeInSeconds * clip.ticksPerSecond;
     float animationTime = fmod(timeInTicks, clip.duration);
+
+    if (isLoop)
+    {
+        animationTime = fmod(timeInTicks, clip.duration);
+    }
+    else 
+    {
+        animationTime = std::min(timeInTicks, clip.duration - 0.001f);
+    }
 
     for (int i = 0; i < (int)m_bones.size(); i++)
     {
