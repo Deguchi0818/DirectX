@@ -132,6 +132,9 @@ void GameInstance::UpdateSystem()
 
 void GameInstance::Render()
 {
+    Model* pModel = m_resourceManager.GetModel("Player");
+    if (!pModel) return;
+
     static float timer = 0.0f;
     timer += m_deltaTime;
 
@@ -140,7 +143,7 @@ void GameInstance::Render()
     std::string currentAnim = m_player.GetCurrentAnimName();
     float animTime = m_player.GetAnimTimer();
     bool isLoop = (currentAnim != "Jump");
-    myModel.UpdateAnimation(currentAnim, animTime, animMatrices, hasAnim);
+    pModel->UpdateAnimation(currentAnim, animTime, animMatrices, hasAnim);
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -153,14 +156,14 @@ void GameInstance::Render()
     ImGui::SliderFloat("Jump Power", &m_player.GetJumpPower(), 0.0f, 20.0f);
     ImGui::SliderFloat("Move Speed", &m_player.GetMoveSpeed(), 0.0f, 20.0f);
     static int selectedBone = 10; // 動かしたいボーンの番号
-    ImGui::SliderInt("Select Bone ID", &selectedBone, 0, (int)myModel.m_bones.size() - 1);
+    ImGui::SliderInt("Select Bone ID", &selectedBone, 0, (int)pModel->m_bones.size() - 1);
     ImGui::SliderFloat("Mouse Sensitivity", &m_camera.GetSensitivity(), 0.0001f, 0.01f);
     ImGui::SliderFloat("Right Stick Sensitivity", &m_camera.GetRightStickSensitivity(), 0.0001f, 0.1f);
     
     ImGui::Separator();
     ImGui::Text("[Animation Debug]");
-    ImGui::Text("Model Bone Count: %d", (int)myModel.m_bones.size());
-    ImGui::Text("Animation Count: %d", (int)myModel.m_animations.size());
+    ImGui::Text("Model Bone Count: %d", (int)pModel->m_bones.size());
+    ImGui::Text("Animation Count: %d", (int)pModel->m_animations.size());
 
     int animBoneCount = 0;
     for (bool b : hasAnim) {
@@ -194,12 +197,12 @@ void GameInstance::Render()
     std::vector<DirectX::XMMATRIX> worldMatrices(256, DirectX::XMMatrixIdentity());
 
     // ボーンの階層順に計算するための再帰処理
-    std::vector<bool> isCalculated(myModel.m_bones.size(), false);
+    std::vector<bool> isCalculated(pModel->m_bones.size(), false);
 
     std::function<void(int)> CalcBoneMatrix = [&](int boneIdx) {
         if (isCalculated[boneIdx]) return; // 既に計算済みならスキップ
 
-        int parentIdx = myModel.m_bones[boneIdx].parentIndex;
+        int parentIdx = pModel->m_bones[boneIdx].parentIndex;
 
         // 親がいるなら、自分の計算の前に親を計算させる
         if (parentIdx != -1) {
@@ -209,13 +212,13 @@ void GameInstance::Render()
 
         DirectX::XMVECTOR det;
         // 自分の初期姿勢
-        DirectX::XMMATRIX globalBind = DirectX::XMMatrixInverse(&det, myModel.m_bones[boneIdx].offset);
+        DirectX::XMMATRIX globalBind = DirectX::XMMatrixInverse(&det, pModel->m_bones[boneIdx].offset);
 
         // 親からの相対的な位置（ローカル空間の初期姿勢）を計算
         DirectX::XMMATRIX localBind;
         if (parentIdx != -1) 
         {
-            localBind = globalBind * myModel.m_bones[parentIdx].offset;
+            localBind = globalBind * pModel->m_bones[parentIdx].offset;
         }
         else {
             localBind = globalBind;
@@ -261,15 +264,15 @@ void GameInstance::Render()
         };
 
     // 全てのボーンに対して再帰計算を実行
-    for (int i = 0; i < (int)myModel.m_bones.size(); i++) 
+    for (int i = 0; i < (int)pModel->m_bones.size(); i++)
     {
         CalcBoneMatrix(i);
     }
 
     // 最後にスキニング行列を確定させる
-    for (int i = 0; i < (int)myModel.m_bones.size(); i++) 
+    for (int i = 0; i < (int)pModel->m_bones.size(); i++)
     {
-        finalBones[i] = myModel.m_bones[i].offset * worldMatrices[i];
+        finalBones[i] = pModel->m_bones[i].offset * worldMatrices[i];
     }
 
 
@@ -278,7 +281,7 @@ void GameInstance::Render()
     m_baseShader.Bind(context);
 
     ImGui::Begin("Debug Menu");
-    ImGui::Text("Model Bone Count: %d", (int)myModel.m_bones.size());
+    ImGui::Text("Model Bone Count: %d", (int)pModel->m_bones.size());
     ImGui::End();
 
     // 行列の準備
@@ -298,6 +301,8 @@ void GameInstance::Render()
     }
 
     m_player.Draw(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
+    m_player.DrawWeapon(context, &m_baseShader, m_constantBuffer.Get(), view, proj, worldMatrices);
+
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -357,28 +362,20 @@ void GameInstance::Render()
 
 bool GameInstance::CreateAssets(ID3D11Device* device) 
 {
-    if (!m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl")) return false;
+    m_baseShader.Load(device, L"VertexShader.hlsl", L"PixelShader.hlsl");
 
-    myModel.LoadFromFile(device, "Asset/Idle.fbx", "Idle");
-
-    myModel.LoadAnimation("Running", "Asset/Running.fbx");
-    myModel.LoadAnimation("Jump","Asset/Jump.fbx");
-
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> toonSRV;
-    HRESULT hr = DirectX::CreateWICTextureFromFile(device, L"Asset/test/toon.png", nullptr, &toonSRV);
-
-    if (SUCCEEDED(hr)) {
-        myModel.SetToonTexture(toonSRV);
-        m_cubeModel.SetToonTexture(toonSRV);   // 立方体
-        m_planeModel.SetToonTexture(toonSRV);  // 地面
-        m_playerModel.SetToonTexture(toonSRV);  // 地面
+    m_resourceManager.LoadModel(device, "Player", "Asset/Idle.fbx");
+    m_resourceManager.LoadModel(device, "Sword", "Asset/Sword.fbx");
+    Model* pPlayerModel = m_resourceManager.GetModel("Player");
+    if (pPlayerModel) 
+    {
+		pPlayerModel->LoadAnimation("Idle", "Asset/Idle.fbx");
+        pPlayerModel->LoadAnimation("Running", "Asset/Running.fbx");
+        pPlayerModel->LoadAnimation("Jump", "Asset/Jump.fbx");
     }
 
-    myModel.SetToonTexture(toonSRV);
-
-    m_cubeModel.CreateCube(device, 1.0f, { 0.0f, 0.5f, 1.0f, 1.0f });
-    m_playerModel.CreateCube(device, 1.0f, { 0.5f, 0.0f, 0.0f, 1.0f });
-    m_planeModel.CreatePlane(device, 1.0f, 1.0f, { 0.0f, 0.5f, 0.0f, 1.0f });
+    m_resourceManager.CreateCube(device, "Cube", 1.0f, { 0.0f, 0.5f, 1.0f, 1.0f });
+    m_resourceManager.CreatePlane(device, "Plane", 1.0f, 1.0f, { 0.0f, 0.5f, 0.0f, 1.0f });
 
     // 定数バッファ作成
     D3D11_BUFFER_DESC cbDesc = {};
@@ -396,11 +393,14 @@ void GameInstance::CreateScene()
 {
     m_gameObjects.clear();
     m_terrain.clear();
-
+    Model* pPlayerModel = m_resourceManager.GetModel("Player");
+    if (pPlayerModel) {
+        m_player.Initialize(pPlayerModel);
+    }
 
     // オブジェクトの配置
     GameObject floor;
-    floor.pModel = &m_planeModel;
+    floor.pModel = m_resourceManager.GetModel("Plane");
     floor.transform.SetPosition(0, 0, 0);
     floor.transform.SetScale(50.0f, 1.0f, 50.0f);
     floor.isStatic = true;
@@ -408,7 +408,7 @@ void GameInstance::CreateScene()
     m_terrain.push_back(floor);
 
     GameObject wall;
-    wall.pModel = &m_cubeModel;
+    wall.pModel = m_resourceManager.GetModel("Cube");
     wall.transform.SetPosition(5.0f, 1.0f, 0.0f);
     wall.transform.SetScale(1.0f, 7.0f, 5.0f);
     wall.isStatic = true;
@@ -418,7 +418,7 @@ void GameInstance::CreateScene()
     m_gameObjects.push_back(wall);
 
     GameObject block;
-    block.pModel = &m_cubeModel;
+    block.pModel = m_resourceManager.GetModel("Cube");
     block.transform.SetPosition(0.0f, 3.5f, 0.0f);
     block.transform.SetScale(1.0f, 1.0f, 1.0f);
     block.isStatic = false;
@@ -429,7 +429,7 @@ void GameInstance::CreateScene()
     m_gameObjects.push_back(block);
 
     GameObject coin;
-    coin.pModel = &m_cubeModel;
+    coin.pModel = m_resourceManager.GetModel("Cube");
     coin.transform.SetPosition(-3.0f, 1.0f, 2.0f);
     coin.transform.SetScale(0.5f, 0.5f, 0.5f);
     coin.isStatic = true;
@@ -440,6 +440,15 @@ void GameInstance::CreateScene()
     coinCol.isTrigger = true;
     m_gameObjects.push_back(coin);
 
+    WeaponData swordData;
+    swordData.name = "Sword";
+    swordData.damage = 10.0f;
+    swordData.model = m_resourceManager.GetModel("Sword");
+    m_sword.Initialize(swordData);
+    m_sword.transform.SetScale(0.1f, 0.1f, 0.1f);
+    m_sword.transform.SetRotation(0.0f, -110.0f, 90.0f);
+    m_sword.transform.SetPosition(-20.0f, 8.0f, -10.0f);
+    m_player.EquipWeapon(&m_sword, "mixamorig:RightHand");
 
     //GameObject character;
     //character.pModel = &myModel; // さきほど読み込んだモデルをセット
@@ -449,7 +458,8 @@ void GameInstance::CreateScene()
 
     //m_gameObjects.push_back(character);
 
-    m_player.Initialize(&myModel);
+
+    //m_sword.pModel = &m_swordModel;
 
     m_physics.AddDynamicObject(&m_player);
     for (auto& obj : m_terrain)

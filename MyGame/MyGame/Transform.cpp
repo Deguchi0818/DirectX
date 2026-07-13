@@ -18,8 +18,8 @@ void Transform::UpdateMatrix()
 
     MyMatrix4x4 matT = MyMatrix4x4::CreateTranslation(m_position.x, m_position.y, m_position.z);
 
-    MyMatrix4x4 matR = MyMatrix4x4::Multiply(matRX, matRY);
-    matR = MyMatrix4x4::Multiply(matR, matRZ);
+    MyMatrix4x4 matR = MyMatrix4x4::Multiply(matRZ, matRX);
+    matR = MyMatrix4x4::Multiply(matR, matRY);
 
     m_worldMatrix = MyMatrix4x4::Multiply(matS, matR);
     m_worldMatrix = MyMatrix4x4::Multiply(m_worldMatrix, matT);

@@ -154,8 +154,10 @@
     <ClInclude Include="MyMatrix4x4.h" />
     <ClInclude Include="PhysicsEngine.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Transform.h" />
+    <ClInclude Include="Weapon.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
@@ -179,8 +181,10 @@
     <ClCompile Include="MyMatrix4x4.cpp" />
     <ClCompile Include="PhysicsEngine.cpp" />
     <ClCompile Include="Player.cpp" />
+    <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Transform.cpp" />
+    <ClCompile Include="Weapon.cpp" />
     <ClCompile Include="WinMain.cpp.cpp" />
   </ItemGroup>
   <ItemGroup>

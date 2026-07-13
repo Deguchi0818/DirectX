@@ -71,6 +71,15 @@ public:
     // ボーンのオフセット行列を保存する配列
     std::vector<BoneInfo> m_bones;
 
+    int GetBoneIndex(const std::string& boneName) const {
+        for (int i = 0; i < m_bones.size(); ++i) {
+            if (m_bones[i].name == boneName) {
+                return i;
+            }
+		}
+		return -1; // 見つからなかった場合
+    }
+
     // アニメーションデータを保存する配列
     std::map<std::string, AnimationClip> m_animations;
 private:

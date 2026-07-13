@@ -128,3 +128,18 @@ void Player::OnCollisionEnter(std::string myCol, GameObject* other, std::string 
         m_hitHead = true;
     }
 }
+
+void Player::DrawWeapon(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj, const std::vector<DirectX::XMMATRIX>& worldMatrices)
+{
+    if (!m_equippedWeapon || m_handBoneIndex == -1) return;
+
+    transform.UpdateMatrix();
+    MyMatrix4x4 pWorldMat = transform.GetWorldMatrix();
+    DirectX::XMMATRIX playerWorld = *(DirectX::XMMATRIX*)&pWorldMat;
+
+    // アニメーションで計算された「右手の姿勢」に、プレイヤーの「今のワールド座標」を掛ける
+    DirectX::XMMATRIX handMatrix = worldMatrices[m_handBoneIndex] * playerWorld;
+
+    // 武器に「俺の右手に付いてこい！」と行列を渡して描画させる
+    m_equippedWeapon->Draw(context, shader, cb, view, proj, &handMatrix);
+}

@@ -14,6 +14,7 @@
 #include "Player.h"
 #include "PhysicsEngine.h"
 #include "DebugRenderer.h"
+#include "ResourceManager.h"
 
 class GameInstance
 {
@@ -41,10 +42,7 @@ private:
 	std::vector<GameObject> m_gameObjects;
 	std::vector<GameObject> m_terrain;
 
-	Model m_cubeModel;
-	Model m_planeModel;
-	Model m_playerModel;
-	Model myModel;
+	ResourceManager m_resourceManager;
 
 	Graphics m_graphics;
 	Shader m_baseShader;
@@ -52,6 +50,7 @@ private:
 	Player m_player;
 	PhysicsEngine m_physics;
 	DebugRenderer m_debugRenderer;
+	Weapon m_sword;
 
 	std::chrono::high_resolution_clock::time_point m_lastTime;
 	float m_deltaTime = 0.0f;

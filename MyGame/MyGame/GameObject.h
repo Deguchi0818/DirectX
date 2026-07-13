@@ -36,7 +36,7 @@ public:
     MyVector3 GetVelocity() const { return velocity; }
     void SetVelocity(const MyVector3& v) { velocity = v; }
 
-    void Draw(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj)
+    void Draw(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj, DirectX::XMMATRIX* parentMatrix = nullptr)
     {
         if (!pModel) return; // ÉÅÉbÉVÉÖÇ™Ç»Ç¢èÍçáÇÕâΩÇ‡ÇµÇ»Ç¢
 
@@ -47,6 +47,11 @@ public:
         MyMatrix4x4 projMat = proj;
 
         DirectX::XMMATRIX world = *(DirectX::XMMATRIX*)&worldMat;
+        
+        if (parentMatrix != nullptr) {
+			world = world * (*parentMatrix);
+        }
+        
         DirectX::XMMATRIX xmView = *(DirectX::XMMATRIX*)&viewMat;
         DirectX::XMMATRIX xmProj = *(DirectX::XMMATRIX*)&projMat;
 
