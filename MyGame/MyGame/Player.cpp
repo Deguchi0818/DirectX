@@ -12,6 +12,7 @@ void Player::Initialize(Model* model)
     m_stateAnimMap[PlayerState::Idle] = "Idle";
     m_stateAnimMap[PlayerState::Run] = "Running";
     m_stateAnimMap[PlayerState::Jump] = "Jump";
+    m_stateAnimMap[PlayerState::Attack] = "Attack";
 
     transform.SetScale(0.01f, 0.01f, 0.01f);
     transform.SetRotation(0.0f, 0.0f, 0.0f);
@@ -81,7 +82,7 @@ void Player::Update(float dt, float camYaw)
     }
     else
     {
-        if (m_isGrounded) m_state = PlayerState::Idle;
+        if (m_isGrounded && m_state != PlayerState::Attack) m_state = PlayerState::Idle;
         //vel.x = 0.0f;
         //vel.z = 0.0f;
     }
@@ -100,17 +101,25 @@ void Player::Update(float dt, float camYaw)
         coyoteTimer = -1.0f;
     }
 
+    if (Input::GetKeyDown('Q') && (m_isGrounded))
+    {
+        m_state = PlayerState::Attack;
+    }
+
     SetVelocity(vel);
 
     m_isGrounded = false;
 
-    if (m_stateAnimMap.count(m_state) > 0) {
-        if (m_state == PlayerState::Jump) {
-            // ジャンプの時だけ、しゃがみ（予備動作）を飛ばして 0.3秒目 から再生する！
+    if (m_stateAnimMap.count(m_state) > 0) 
+    {
+        if (m_state == PlayerState::Jump) 
+        {
+            // ジャンプの時だけ、しゃがみを飛ばしてから再生する
             PlayAnimation(m_stateAnimMap[m_state], 0.7f);
         }
-        else {
-            // 走る・待機などは今まで通り 0.0秒目 から再生
+        else 
+        {
+            // 走る・待機などは今まで通り再生
             PlayAnimation(m_stateAnimMap[m_state], 0.0f);
         }
     }
@@ -137,9 +146,7 @@ void Player::DrawWeapon(ID3D11DeviceContext* context, Shader* shader, ID3D11Buff
     MyMatrix4x4 pWorldMat = transform.GetWorldMatrix();
     DirectX::XMMATRIX playerWorld = *(DirectX::XMMATRIX*)&pWorldMat;
 
-    // アニメーションで計算された「右手の姿勢」に、プレイヤーの「今のワールド座標」を掛ける
     DirectX::XMMATRIX handMatrix = worldMatrices[m_handBoneIndex] * playerWorld;
 
-    // 武器に「俺の右手に付いてこい！」と行列を渡して描画させる
     m_equippedWeapon->Draw(context, shader, cb, view, proj, &handMatrix);
 }

@@ -8,7 +8,8 @@ enum class PlayerState
 {
 	Idle = 0,
 	Run = 1,
-	Jump = 2
+	Jump = 2,
+	Attack
 };
 
 class Player : public GameObject
@@ -46,7 +47,6 @@ private:
 	bool m_isGrounded = false;
 	PlayerState m_state = PlayerState::Idle;
 	std::map<PlayerState, std::string> m_stateAnimMap;
-	//GameObject* m_equippedWeapon = nullptr;
 	int m_handBoneIndex = -1;
 
 };

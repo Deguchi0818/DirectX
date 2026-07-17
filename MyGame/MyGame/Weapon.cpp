@@ -7,9 +7,8 @@ void Weapon::Initialize(const WeaponData& data) {
 }
 
 void Weapon::OnTriggerEnter(GameObject* other) {
-    // 攻撃中かつ、敵（Enemyクラスなど）に当たった場合
-    if (m_isAttacking) {
-        // 例: other->TakeDamage(m_data.damage); 
-        // 攻撃が当たった時の演出などをここに追加できる
+    if (m_isAttacking) 
+    {
+
     }
 }

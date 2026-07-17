@@ -235,9 +235,9 @@ void GameInstance::Render()
                 DirectX::XMVECTOR animScale, animRot, animTrans;
                 DirectX::XMMatrixDecompose(&animScale, &animRot, &animTrans, animMatrices[boneIdx]);
 
-                animRot = DirectX::XMQuaternionNormalize(animRot); // 爆発を防ぐ安全装置
+                animRot = DirectX::XMQuaternionNormalize(animRot);
 
-                // 綺麗な関節位置を保ったまま、回転だけを適用して合成！
+                // 綺麗な関節位置を保ったまま、回転だけを適用して合成
                 newLocal = DirectX::XMMatrixScalingFromVector(bindScale) *
                     DirectX::XMMatrixRotationQuaternion(animRot) *
                     DirectX::XMMatrixTranslationFromVector(bindTrans);
@@ -372,6 +372,7 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
 		pPlayerModel->LoadAnimation("Idle", "Asset/Idle.fbx");
         pPlayerModel->LoadAnimation("Running", "Asset/Running.fbx");
         pPlayerModel->LoadAnimation("Jump", "Asset/Jump.fbx");
+        pPlayerModel->LoadAnimation("Attack", "Asset/Attack.fbx");
     }
 
     m_resourceManager.CreateCube(device, "Cube", 1.0f, { 0.0f, 0.5f, 1.0f, 1.0f });
@@ -450,11 +451,6 @@ void GameInstance::CreateScene()
     m_sword.transform.SetPosition(-20.0f, 8.0f, -10.0f);
     m_player.EquipWeapon(&m_sword, "mixamorig:RightHand");
 
-    //GameObject character;
-    //character.pModel = &myModel; // さきほど読み込んだモデルをセット
-    //character.transform.SetPosition(0.0f, 1.0f, 0.0f); // 座標を設定
-    //character.transform.SetRotation(0.0f, 0.0f, 0.0);
-    //character.transform.SetScale(1.0f, 1.0f, 1.0f);    // サイズを調整
 
     //m_gameObjects.push_back(character);
 

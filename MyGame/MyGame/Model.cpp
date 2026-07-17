@@ -411,19 +411,19 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
 
         std::string searchName = "";
 
-        // 1. まずは完全一致を試す
+        // まずは完全一致を試す
         if (clip.channels.count(boneName) > 0)
         {
             searchName = boneName;
         }
         else
         {
-            // 2. "mixamorig:" などの装飾を取り除いた「純粋な骨の名前」を作る
+            // "mixamorig:" などの装飾を取り除いた「純粋な骨の名前」を作る
             std::string pureBoneName = boneName;
             size_t pos = pureBoneName.find("mixamorig:");
             if (pos != std::string::npos) pureBoneName = pureBoneName.substr(pos + 10);
 
-            // 3. アニメーションの中から、純粋な名前が「完全一致」するものを探す！
+            // アニメーションの中から、純粋な名前が「完全一致」するものを探す！
             for (auto& pair : clip.channels)
             {
                 std::string pureChannelName = pair.first;
@@ -508,7 +508,7 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
 bool Model::LoadAnimation(const std::string& animName, const std::string& filename) {
     Assimp::Importer importer;
 
-    // バケモノ化を防ぐ魔法の設定はここでも必須！
+    // バケモノ化を防ぐ魔法の設定はここでも必須
     importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
 
     // アニメーションだけ欲しいので、メッシュの計算（Triangulateなど）は不要。左手系変換だけ行う。
