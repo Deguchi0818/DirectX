@@ -311,6 +311,7 @@ void GameInstance::Render()
     {
         // プレイヤーのコライダーを常に表示する設定
         m_player.m_showCollider = true;
+		m_sword.m_showCollider = true;
 
         // コライダーを DebugRenderer に登録するための便利なラムダ式（関数内関数）
         auto AddCollidersToDebug = [&](GameObject& obj) {
@@ -336,6 +337,7 @@ void GameInstance::Render()
 
         // プレイヤーのコライダーを登録
         AddCollidersToDebug(m_player);
+		AddCollidersToDebug(m_sword);
 
         // ゲームオブジェクトのコライダーを登録
         for (auto& obj : m_gameObjects) {
@@ -445,10 +447,11 @@ void GameInstance::CreateScene()
     swordData.name = "Sword";
     swordData.damage = 10.0f;
     swordData.model = m_resourceManager.GetModel("Sword");
+    swordData.localRotation = { 180.0f, -110.0f, 0.0f };
     m_sword.Initialize(swordData);
     m_sword.transform.SetScale(0.1f, 0.1f, 0.1f);
     m_sword.transform.SetRotation(0.0f, -110.0f, 90.0f);
-    m_sword.transform.SetPosition(-20.0f, 8.0f, -10.0f);
+    //m_sword.transform.SetPosition(-20.0f, 8.0f, -10.0f);
     m_player.EquipWeapon(&m_sword, "mixamorig:RightHand");
 
 
@@ -473,7 +476,6 @@ void GameInstance::CreateScene()
             m_physics.AddDynamicObject(&obj); // 木箱などはこっち
         }
     }
-
    
 }
 

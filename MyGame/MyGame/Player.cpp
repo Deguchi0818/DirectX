@@ -148,5 +148,7 @@ void Player::DrawWeapon(ID3D11DeviceContext* context, Shader* shader, ID3D11Buff
 
     DirectX::XMMATRIX handMatrix = worldMatrices[m_handBoneIndex] * playerWorld;
 
+    m_equippedWeapon->FollowToBone(handMatrix);
+
     m_equippedWeapon->Draw(context, shader, cb, view, proj, &handMatrix);
 }
