@@ -384,17 +384,17 @@ int FindKeyIndex(float animationTime, const std::vector<AnimKeyFrame<T>>& keys) 
 
 void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim, bool isLoop)
 {
-    outLocalMatrices.resize(m_bones.size(), DirectX::XMMatrixIdentity());               
-    outHasAnim.resize(m_bones.size(), false);
+    outLocalMatrices.resize(m_bones.size(), DirectX::XMMatrixIdentity());   // モデルに合わせて配列を増やして、XMMatrixIdentityで初期値を詰める         
+    outHasAnim.resize(m_bones.size(), false);                               // ボーンをすべてfalse(動いていない)で初期化
 
-    if (m_animations.empty()) return;
+    if (m_animations.empty()) return;   // アニメーションがなければreturn
 
-    AnimationClip& clip = m_animations[animName];
+    AnimationClip& clip = m_animations[animName];   // 辞書から再生したいアニメーションを参照
 
     //AnimationClip& clip = m_animations[0];
 
-    float timeInTicks = timeInSeconds * clip.ticksPerSecond;
-    float animationTime = fmod(timeInTicks, clip.duration);
+    float timeInTicks = timeInSeconds * clip.ticksPerSecond;    // 現在の秒数に1秒あたりのTick数を掛けて、アニメーション内部の時間単位に変換
+    float animationTime = fmod(timeInTicks, clip.duration);     // アニメーション時間を 0〜duration の範囲内に収める（ループさせる）
 
     if (isLoop)
     {
@@ -402,7 +402,7 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
     }
     else 
     {
-        animationTime = std::min(timeInTicks, clip.duration - 0.001f);
+        animationTime = std::min(timeInTicks, clip.duration - 0.001f);  // アニメーションの長さを超えないようにクランプ
     }
 
     for (int i = 0; i < (int)m_bones.size(); i++)
@@ -423,7 +423,7 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
             size_t pos = pureBoneName.find("mixamorig:");
             if (pos != std::string::npos) pureBoneName = pureBoneName.substr(pos + 10);
 
-            // アニメーションの中から、純粋な名前が「完全一致」するものを探す！
+            // アニメーションの中から、純粋な名前が「完全一致」するものを探す
             for (auto& pair : clip.channels)
             {
                 std::string pureChannelName = pair.first;
@@ -450,19 +450,24 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
             BoneAnimation& anim = clip.channels[searchName];
 
             // 大きさ（Scale）
-            DirectX::XMVECTOR scale = DirectX::XMVectorSet(1, 1, 1, 0);
+            DirectX::XMVECTOR scale = DirectX::XMVectorSet(1, 1, 1, 0); // スケールの初期化
+
+            // キーフレームが1つの時、補間計算を省略
             if (anim.scaleKeys.size() == 1) {
                 scale = DirectX::XMVectorSet(anim.scaleKeys[0].value.x, anim.scaleKeys[0].value.y, anim.scaleKeys[0].value.z, 0);
             }
             else if (anim.scaleKeys.size() > 1) {
-                int idx = FindKeyIndex(animationTime, anim.scaleKeys);
+                // 現在の再生時間から何番目のキーと何番目のキーの間かを求める
+                int idx = FindKeyIndex(animationTime, anim.scaleKeys);  
                 int nextIdx = idx + 1;
-                float dt = anim.scaleKeys[nextIdx].time - anim.scaleKeys[idx].time;
-                float factor = (dt > 0.0f) ? (animationTime - anim.scaleKeys[idx].time) / dt : 0.0f;
+       
+                float dt = anim.scaleKeys[nextIdx].time - anim.scaleKeys[idx].time;                 // キーフレーム間の区間の時間
+                float factor = (dt > 0.0f) ? (animationTime - anim.scaleKeys[idx].time) / dt : 0.0f;// 現在の時間が、この区間の中で何%（0.0 〜 1.0）の位置にいるか
                 factor = std::clamp(factor, 0.0f, 1.0f);
+
                 DirectX::XMVECTOR start = DirectX::XMVectorSet(anim.scaleKeys[idx].value.x, anim.scaleKeys[idx].value.y, anim.scaleKeys[idx].value.z, 0);
                 DirectX::XMVECTOR end = DirectX::XMVectorSet(anim.scaleKeys[nextIdx].value.x, anim.scaleKeys[nextIdx].value.y, anim.scaleKeys[nextIdx].value.z, 0);
-                scale = DirectX::XMVectorLerp(start, end, factor);
+                scale = DirectX::XMVectorLerp(start, end, factor);  // Lerpによる補間
             }
 
             // 回転（Rotation）
@@ -471,12 +476,14 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
                 rotation = anim.rotationKeys[0].value;
             }
             else if (anim.rotationKeys.size() > 1) {
+                // 現在の再生時間から何番目のキーと何番目のキーの間かを求める
                 int idx = FindKeyIndex(animationTime, anim.rotationKeys);
                 int nextIdx = idx + 1;
-                float dt = anim.rotationKeys[nextIdx].time - anim.rotationKeys[idx].time;
-                float factor = (dt > 0.0f) ? (animationTime - anim.rotationKeys[idx].time) / dt : 0.0f;
+
+                float dt = anim.rotationKeys[nextIdx].time - anim.rotationKeys[idx].time;               // キーフレーム間の区間の時間
+                float factor = (dt > 0.0f) ? (animationTime - anim.rotationKeys[idx].time) / dt : 0.0f; // 現在の時間が、この区間の中で何%（0.0 〜 1.0）の位置にいるか
                 factor = std::clamp(factor, 0.0f, 1.0f);
-                rotation = DirectX::XMQuaternionSlerp(anim.rotationKeys[idx].value, anim.rotationKeys[nextIdx].value, factor);
+                rotation = DirectX::XMQuaternionSlerp(anim.rotationKeys[idx].value, anim.rotationKeys[nextIdx].value, factor); // Slerpによる補間
             }
 
             // 位置（Position）
@@ -508,7 +515,6 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
 bool Model::LoadAnimation(const std::string& animName, const std::string& filename) {
     Assimp::Importer importer;
 
-    // バケモノ化を防ぐ魔法の設定はここでも必須
     importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
 
     // アニメーションだけ欲しいので、メッシュの計算（Triangulateなど）は不要。左手系変換だけ行う。
@@ -516,7 +522,7 @@ bool Model::LoadAnimation(const std::string& animName, const std::string& filena
 
     if (!scene || !scene->mRootNode) return false;
 
-    // アニメーションが入っていれば、リストに追記する！
+    // アニメーションが入っていれば、リストに追記する
     if (scene->HasAnimations()) {
         ExtractAnimations(scene, animName);
     }

@@ -144,9 +144,9 @@ void Player::DrawWeapon(ID3D11DeviceContext* context, Shader* shader, ID3D11Buff
 
     transform.UpdateMatrix();
     MyMatrix4x4 pWorldMat = transform.GetWorldMatrix();
-    DirectX::XMMATRIX playerWorld = *(DirectX::XMMATRIX*)&pWorldMat;
+    DirectX::XMMATRIX playerWorld = *(DirectX::XMMATRIX*)&pWorldMat;            // プレイヤーがどこにいるか
 
-    DirectX::XMMATRIX handMatrix = worldMatrices[m_handBoneIndex] * playerWorld;
+    DirectX::XMMATRIX handMatrix = worldMatrices[m_handBoneIndex] * playerWorld;// 手首のボーンがどこに曲がっているかとプレイヤーの位置を掛け算して手首の位置と角度を求める
 
     m_equippedWeapon->FollowToBone(handMatrix);
 
