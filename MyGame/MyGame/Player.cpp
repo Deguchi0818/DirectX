@@ -140,15 +140,24 @@ void Player::OnCollisionEnter(std::string myCol, GameObject* other, std::string 
 
 void Player::DrawWeapon(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj, const std::vector<DirectX::XMMATRIX>& worldMatrices)
 {
+    // 手首ボーンが未設定、または武器を装備していない場合は処理をスキップ
     if (!m_equippedWeapon || m_handBoneIndex == -1) return;
 
+    // --------------------------------------------------------
+    // プレイヤーのワールド行列を取得・変換
+    // --------------------------------------------------------
     transform.UpdateMatrix();
     MyMatrix4x4 pWorldMat = transform.GetWorldMatrix();
-    DirectX::XMMATRIX playerWorld = *(DirectX::XMMATRIX*)&pWorldMat;            // プレイヤーがどこにいるか
+    DirectX::XMMATRIX playerWorld = *(DirectX::XMMATRIX*)&pWorldMat; 
 
-    DirectX::XMMATRIX handMatrix = worldMatrices[m_handBoneIndex] * playerWorld;// 手首のボーンがどこに曲がっているかとプレイヤーの位置を掛け算して手首の位置と角度を求める
+    // --------------------------------------------------------
+    // 手首ボーンの最終ワールド行列を算出
+    // --------------------------------------------------------
+    DirectX::XMMATRIX handMatrix = worldMatrices[m_handBoneIndex] * playerWorld;
 
+    // --------------------------------------------------------
+    // 武器の姿勢更新と描画
+    // --------------------------------------------------------
     m_equippedWeapon->FollowToBone(handMatrix);
-
     m_equippedWeapon->Draw(context, shader, cb, view, proj, &handMatrix);
 }

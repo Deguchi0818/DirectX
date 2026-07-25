@@ -4,6 +4,7 @@
 
 MyMatrix4x4::MyMatrix4x4() 
 {
+	// ’PˆÊs—ñ‚Æ‚µ‚Ä‰Šú‰»
 	memset(m, 0, sizeof(m));
 	m[0][0] = 1.0f;
 	m[1][1] = 1.0f;

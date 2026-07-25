@@ -7,7 +7,9 @@ Transform::Transform()
 
 void Transform::UpdateMatrix() 
 {
-    // 「度」から「ラジアン」に変換する定数
+    // --------------------------------------------------------
+    // 各成分(スケール・回転・移動)の独立した行列を生成
+    // --------------------------------------------------------
     const float toRadian = 3.14159265f / 180.0f;
 
     MyMatrix4x4 matS = MyMatrix4x4::CreateScale(m_scale.x, m_scale.y, m_scale.z);
@@ -18,9 +20,15 @@ void Transform::UpdateMatrix()
 
     MyMatrix4x4 matT = MyMatrix4x4::CreateTranslation(m_position.x, m_position.y, m_position.z);
 
+    // --------------------------------------------------------
+    // 回転行列の合成 (Z -> X -> Y の順序)
+    // --------------------------------------------------------
     MyMatrix4x4 matR = MyMatrix4x4::Multiply(matRZ, matRX);
     matR = MyMatrix4x4::Multiply(matR, matRY);
 
+    // --------------------------------------------------------
+    // SRTによる最終ワールド行列の合成
+    // --------------------------------------------------------
     m_worldMatrix = MyMatrix4x4::Multiply(matS, matR);
     m_worldMatrix = MyMatrix4x4::Multiply(m_worldMatrix, matT);
 }

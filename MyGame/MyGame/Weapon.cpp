@@ -20,30 +20,42 @@ void Weapon::Initialize(const WeaponData& data) {
 }
 
 void Weapon::FollowToBone(const DirectX::XMMATRIX& handMatrix) {
-    DirectX::XMVECTOR scale, rot, trans;                            // 大きさ・回転・位置を定義
-    DirectX::XMMatrixDecompose(&scale, &rot, &trans, handMatrix);   // handMatrixから大きさ・回転・位置を取り出す
+    // --------------------------------------------------------
+    // 手首ボーンの行列を分解し、武器の位置を同期
+    // --------------------------------------------------------
+    DirectX::XMVECTOR scale, rot, trans;                           
+    DirectX::XMMatrixDecompose(&scale, &rot, &trans, handMatrix);
+
     DirectX::XMFLOAT3 handPos;
-    DirectX::XMStoreFloat3(&handPos, trans);                        // handPosに取り出した位置をコピー
+    DirectX::XMStoreFloat3(&handPos, trans);
     transform.SetPosition(handPos.x, handPos.y, handPos.z);
 
-    DirectX::XMMATRIX handRotMat = DirectX::XMMatrixRotationQuaternion(rot);    // 取り出した回転の回転行列を作る
-    // XMConvertToRadians(ラジアンに変換)
+    // --------------------------------------------------------
+    // 手首の回転と武器固有の持ち方を合成
+    // --------------------------------------------------------
+    DirectX::XMMATRIX handRotMat = DirectX::XMMatrixRotationQuaternion(rot);
+
+    // 武器種(データ)ごとの「持ち方の角度」を手首の回転に合成する
     DirectX::XMMATRIX localRot = DirectX::XMMatrixRotationRollPitchYaw(
         DirectX::XMConvertToRadians(m_data.localRotation.x),
         DirectX::XMConvertToRadians(m_data.localRotation.y),
         DirectX::XMConvertToRadians(m_data.localRotation.z)
     );
-    DirectX::XMMATRIX combinedRot = localRot * handRotMat;  // 武器の角度と手の角度を掛けた最終的な角度
 
+    // --------------------------------------------------------
+    // 刃に配置した各コライダーを武器の向きに合わせて更新
+    // --------------------------------------------------------
+    DirectX::XMMATRIX combinedRot = localRot * handRotMat;
     for (size_t i = 0; i < m_colliders.size(); ++i) {
         DirectX::XMVECTOR baseOffset = m_originalOffsets[i];
 
-        DirectX::XMVECTOR transformedOffset = DirectX::XMVector3Transform(baseOffset, combinedRot); // 元の位置（オフセット）に「回転（向き）」だけを適用して、斜めに傾ける
+        // 武器の傾きに合わせて各コライダーのオフセットを回転させ、刃に沿った判定を維持する
+        DirectX::XMVECTOR transformedOffset = DirectX::XMVector3Transform(baseOffset, combinedRot);
 
         DirectX::XMFLOAT3 c;
         DirectX::XMStoreFloat3(&c, transformedOffset);
 
-        m_colliders[i].offset = MyVector3(c.x, c.y, c.z);   // 反映
+        m_colliders[i].offset = MyVector3(c.x, c.y, c.z);
     }
 }
 
