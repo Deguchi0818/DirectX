@@ -1,8 +1,8 @@
-#include "Collider.h"
+ï»¿#include "Collider.h"
 
 AABB ColliderComponent::GetWorldAABB(const MyVector3& parentPos, const MyVector3& parentScale) const 
 {
-    // e‚ÌƒXƒP[ƒ‹‚ğl—¶‚µ‚ÄƒIƒtƒZƒbƒg‚ÆƒTƒCƒY‚ğŒvZ
+    // è¦ªã®ã‚¹ã‚±ãƒ¼ãƒ«ã‚’è€ƒæ…®ã—ã¦ã‚ªãƒ•ã‚»ãƒƒãƒˆã¨ã‚µã‚¤ã‚ºã‚’è¨ˆç®—
     MyVector3 worldCenter = {
         parentPos.x + offset.x * parentScale.x,
         parentPos.y + offset.y * parentScale.y,
@@ -57,22 +57,22 @@ float Clamp(float n, float min, float max)
     return n;
 }
 
+// --------------------------------------------------------
+// ç·šåˆ†ä¸Šã®æœ€è¿‘æ¥ç‚¹ç®—å‡º
+// --------------------------------------------------------
 MyVector3 Collider::GetClosestPointOnLineSegment(const MyVector3& A, const MyVector3& B, const MyVector3& P) 
 {
-    // ƒxƒNƒgƒ‹ AB ‚Æ AP
 	MyVector3 AB = { B.x - A.x, B.y - A.y, B.z - A.z };
 	MyVector3 AP = { P.x - A.x, P.y - A.y, P.z - A.z };
 
-    // AB‚Ì’·‚³‚Ì“ñæ
 	float abSq = AB.x * AB.x + AB.y * AB.y + AB.z * AB.z;
-	if (abSq == 0.0f) return A; // A ‚Æ B ‚ª“¯‚¶“_‚Ìê‡
+	if (abSq == 0.0f) return A; // ç·šåˆ†ãŒç‚¹ã®å ´åˆã®ã‚¼ãƒ­é™¤ç®—é˜²æ­¢
 
-    // “àÏ(APEAB) ‚ğg‚Á‚ÄAA‚©‚çB‚ÉŒü‚©‚Á‚Ä‚Ç‚ê‚­‚ç‚¢i‚ñ‚¾ˆÊ’u‚ªÅ’Z‚©iŠ„‡ tj‚ğ‹‚ß‚é
+    // å†…ç©(APãƒ»AB) ã‚’ä½¿ã£ã¦ã€Aã‹ã‚‰Bã«å‘ã‹ã£ã¦ã©ã‚Œãã‚‰ã„é€²ã‚“ã ä½ç½®ãŒæœ€çŸ­ã‹ï¼ˆå‰²åˆ tï¼‰ã‚’æ±‚ã‚ã‚‹
 	float t = (AP.x * AB.x + AP.y * AB.y + AP.z * AB.z) / abSq;
 
-	t = Clamp(t, 0.0f, 1.0f);
+	t = Clamp(t, 0.0f, 1.0f);   // å‰²åˆã‚’0ã€œ1ã«åã‚ã€ç·šåˆ†ã®å¤–å´ã«ã¯ã¿å‡ºã•ãªã„ã‚ˆã†ã«ã™ã‚‹
 
-    // Å‹ßÚ“_‚ÌÀ•W‚ğŒvZ‚µ‚Ä•Ô‚·
 	return 
     {
 		A.x + AB.x * t,
@@ -81,25 +81,26 @@ MyVector3 Collider::GetClosestPointOnLineSegment(const MyVector3& A, const MyVec
 	};
 }
 
-// Sphere‚Ì“–‚½‚è”»’è
+// --------------------------------------------------------
+// çƒä½“åŒå£«ã®åˆ¤å®š
+// --------------------------------------------------------
 bool Collider::SphereCollider(const Sphere& a, const Sphere& b) 
 {
 	float dx = a.x - b.x;
 	float dy = a.y - b.y;
 	float dz = a.z - b.z;
 
-	// ’†S“_ŠÔ‚Ì‹——£‚ğ“ñæ
+    // å¹³æ–¹æ ¹(sqrt)ã¯è¨ˆç®—è² è·ãŒé«˜ã„ãŸã‚ã€è·é›¢ã‚‚åŠå¾„ã‚‚ã€ŒäºŒä¹—ã€ã®ã¾ã¾æ¯”è¼ƒã™ã‚‹
 	float distanceSq = dx * dx + dy * dy + dz * dz;
-
-	// ”¼Œa‚ğ‘«‚µ‚½‚à‚Ì‚ğ“ñæ
 	float radiusSum = a.radius + b.radius;
 	float radiusSumSq = radiusSum * radiusSum;
 
-	// –‚½‚µ‚Ä‚¢‚ê‚ÎÚG‚µ‚Ä‚¢‚é
 	return distanceSq <= radiusSumSq;
 }
 
-// AABBƒRƒ‰ƒCƒ_[‚Ì“–‚½‚è”»’è
+// --------------------------------------------------------
+// AABB ã¨ AABB ã®åˆ¤å®š
+// --------------------------------------------------------
 bool Collider::AABBCollider(const AABB& a, const AABB& b) 
 {
 	if (a.max.x < b.min.x || a.min.x > b.max.x) return false;
@@ -109,9 +110,12 @@ bool Collider::AABBCollider(const AABB& a, const AABB& b)
 	return true;
 }
 
-// Sphere‚ÆAABB‚Ì“–‚½‚è”»’è
+// --------------------------------------------------------
+// Sphere ã¨ AABB ã®åˆ¤å®š
+// --------------------------------------------------------
 bool Collider::SphereVsAABB(const Sphere& sphere, const AABB& aabb) 
 {
+    // çƒã®ä¸­å¿ƒåº§æ¨™ã‚’ã€AABBã®ç®±ã®ç¯„å›²å†…ã«ã‚¯ãƒ©ãƒ³ãƒ—(æŠ¼ã—è¾¼ã‚€)ã—ã¦æœ€è¿‘æ¥ç‚¹ã‚’å‡ºã™
     float closestX = Clamp(sphere.x, aabb.min.x, aabb.max.x);
     float closestY = Clamp(sphere.y, aabb.min.y, aabb.max.y);
     float closestZ = Clamp(sphere.z, aabb.min.z, aabb.max.z);
@@ -122,11 +126,13 @@ bool Collider::SphereVsAABB(const Sphere& sphere, const AABB& aabb)
 
     float distanceSq = dx * dx + dy * dy + dz * dz;
 
-    // ”¼Œa‚Ì“ñæ‚Æ”äŠr: d^2 <= r^2
+    // åŠå¾„ã®äºŒä¹—ã¨æ¯”è¼ƒ: d^2 <= r^2
     return distanceSq <= (sphere.radius * sphere.radius);
 }
 
-// ƒJƒvƒZƒ‹‚ÆAABB‚Ì“–‚½‚è”»’è
+// --------------------------------------------------------
+// ã‚«ãƒ—ã‚»ãƒ«ã¨AABBã®å½“ãŸã‚Šåˆ¤å®š
+// --------------------------------------------------------
 bool Collider::CapsuleVsAABB(const Capsule& capsule, const AABB& aabb) 
 {
     float minY = std::min(capsule.p1.y, capsule.p2.y);
@@ -149,20 +155,22 @@ bool Collider::CapsuleVsAABB(const Capsule& capsule, const AABB& aabb)
 	return distanceSq <= (capsule.radius * capsule.radius);
 }
 
-// ƒJƒvƒZƒ‹‚ÆSphere‚Ì“–‚½‚è”»’è
+// --------------------------------------------------------
+// ã‚«ãƒ—ã‚»ãƒ«ã¨Sphereã®å½“ãŸã‚Šåˆ¤å®š
+// --------------------------------------------------------
 bool Collider::CapsuleVsSphere(const Capsule& capsule, const Sphere& sphere) 
 {
-    // ƒJƒvƒZƒ‹‚Ì’†Süip1‚©‚çp2jã‚ÅA‹…‚Ì’†S‚ÉÅ‚à‹ß‚¢“_‚ğ’T‚·
+    // ã‚«ãƒ—ã‚»ãƒ«ã®ä¸­å¿ƒç·šï¼ˆp1ã‹ã‚‰p2ï¼‰ä¸Šã§ã€çƒã®ä¸­å¿ƒã«æœ€ã‚‚è¿‘ã„ç‚¹ã‚’æ¢ã™
     MyVector3 closestPoint = GetClosestPointOnLineSegment(capsule.p1, capsule.p2, { sphere.x, sphere.y, sphere.z });
     
-    // ‚»‚ÌÅ‹ßÚ“_‚©‚çA‹…‚Ì’†S‚Ü‚Å‚Ì‹——£i‚Ì“ñæj‚ğŒvZ‚·‚é
+    // ãã®æœ€è¿‘æ¥ç‚¹ã‹ã‚‰ã€çƒã®ä¸­å¿ƒã¾ã§ã®è·é›¢ï¼ˆã®äºŒä¹—ï¼‰ã‚’è¨ˆç®—ã™ã‚‹
     float dx = sphere.x - closestPoint.x;
     float dy = sphere.y - closestPoint.y;
     float dz = sphere.z - closestPoint.z;
 
-    // ‚¨Œİ‚¢‚Ì”¼Œa‚ğ‘«‚µ‚½‹——£i‚Ì“ñæj‚Æ”äŠr‚·‚é
+    // ãŠäº’ã„ã®åŠå¾„ã‚’è¶³ã—ãŸè·é›¢ï¼ˆã®äºŒä¹—ï¼‰ã¨æ¯”è¼ƒã™ã‚‹
     float distanceSq = dx * dx + dy * dy + dz * dz;
 
-    // ÀÛ‚Ì‹——£‚ªA”¼Œa‚Ì‡Œv‚æ‚è‚à’Z‚¯‚ê‚Î“–‚½‚Á‚Ä‚¢‚é
+    // å®Ÿéš›ã®è·é›¢ãŒã€åŠå¾„ã®åˆè¨ˆã‚ˆã‚Šã‚‚çŸ­ã‘ã‚Œã°å½“ãŸã£ã¦ã„ã‚‹
     return distanceSq <= (capsule.radius + sphere.radius) * (capsule.radius + sphere.radius);
 }
