@@ -11,6 +11,9 @@ void PhysicsEngine::Update(float dt)
 	ResolveCollisions();
 }
 
+// --------------------------------------------------------
+// 内部的な物理計算
+// --------------------------------------------------------
 void PhysicsEngine::Integrate(GameObject* obj, float dt) 
 {
 	MyVector3 vel = obj->GetVelocity();
@@ -30,6 +33,9 @@ void PhysicsEngine::Integrate(GameObject* obj, float dt)
     obj->transform.UpdateMatrix();
 }
 
+// --------------------------------------------------------
+// 衝突の解決（総当たりでペアを作り、めり込みを解消）
+// --------------------------------------------------------
 void PhysicsEngine::ResolveCollisions()
 {
     // Dynamic vs Static
@@ -54,6 +60,9 @@ void PhysicsEngine::ResolveCollisions()
     }
 }
 
+// --------------------------------------------------------
+// 具体的なペアの当たり判定とイベント発火
+// --------------------------------------------------------
 void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b) 
 {
     for (const auto& colA : a->m_colliders)
@@ -205,6 +214,9 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
     
 }
 
+// --------------------------------------------------------
+// AABB同士の押し戻し処理
+// --------------------------------------------------------
 void PhysicsEngine::ResolveOverlap(GameObject* a, GameObject* b, const AABB& boxA, const AABB& boxB)
 {
 
@@ -235,6 +247,9 @@ void PhysicsEngine::ResolveOverlap(GameObject* a, GameObject* b, const AABB& box
     ApplyImpulse(a, b, normal, finalOverlap);
 }
 
+// --------------------------------------------------------
+// SphereとAABBの押し戻し処理
+// --------------------------------------------------------
 void PhysicsEngine::ResolveSphereAABBOverlap(GameObject* moveObj, GameObject* staticObj, const Sphere& s, const AABB& b, bool isSphereMove)
 {
     float closestX = std::clamp(s.x, b.min.x, b.max.x);
@@ -257,6 +272,9 @@ void PhysicsEngine::ResolveSphereAABBOverlap(GameObject* moveObj, GameObject* st
     ApplyImpulse(moveObj, staticObj, normal, overlap);
 }
 
+// --------------------------------------------------------
+// CapsuleとAABBの押し戻し処理
+// --------------------------------------------------------
 void PhysicsEngine::ResolveCapsuleAABBOverlap(GameObject* capObj, GameObject* aabbObj, const Capsule& cap, const AABB& aabb)
 {
     // カプセルの上下の線分の中で、AABBの高さ(Y)に一番近い場所を探す
@@ -317,6 +335,9 @@ void PhysicsEngine::ResolveCapsuleAABBOverlap(GameObject* capObj, GameObject* aa
     ApplyImpulse(capObj, aabbObj, normal, overlap);
 }
 
+// --------------------------------------------------------
+// CapsuleとSphereの押し戻し処理
+// --------------------------------------------------------
 void PhysicsEngine::ResolveCapsuleSphereOverlap(GameObject* capObj, GameObject* sphereObj, const Capsule& cap, const Sphere& sph)
 {
     // カプセル上の最近接点を探す
@@ -341,7 +362,9 @@ void PhysicsEngine::ResolveCapsuleSphereOverlap(GameObject* capObj, GameObject* 
     ApplyImpulse(capObj, sphereObj, normal, overlap);
 }
 
-
+// --------------------------------------------------------
+// 物理法則（めり込み解消・反発・摩擦）の適用
+// --------------------------------------------------------
 void PhysicsEngine::ApplyImpulse(GameObject* objA, GameObject* objB, const MyVector3& normal, float overlap)
 {
     // isStaticがtrueの場合は質量無限,大絶対に動かないとして扱うため、逆数を0にする
