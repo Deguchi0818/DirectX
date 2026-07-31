@@ -267,7 +267,7 @@ void PhysicsEngine::ResolveSphereAABBOverlap(GameObject* moveObj, GameObject* st
     if (overlap <= 0) return;
 
    float moveDir = isSphereMove ? 1.0f : -1.0f;
-    MyVector3 normal = { (s.x - closestX) / dist * moveDir, (s.y - closestY) / dist * moveDir, (s.z - closestZ) / dist * moveDir };
+    MyVector3 normal = { dx / dist * moveDir, dy / dist * moveDir, dz / dist * moveDir };
 
     ApplyImpulse(moveObj, staticObj, normal, overlap);
 }
