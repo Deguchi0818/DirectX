@@ -46,11 +46,13 @@ void Weapon::FollowToBone(const DirectX::XMMATRIX& handMatrix) {
     // 刃に配置した各コライダーを武器の向きに合わせて更新
     // --------------------------------------------------------
     DirectX::XMMATRIX combinedRot = localRot * handRotMat;
-    for (size_t i = 0; i < m_colliders.size(); ++i) {
-        DirectX::XMVECTOR baseOffset = m_originalOffsets[i];
-
-        // 武器の傾きに合わせて各コライダーのオフセットを回転させ、刃に沿った判定を維持する
-        DirectX::XMVECTOR transformedOffset = DirectX::XMVector3Transform(baseOffset, combinedRot);
+    for (size_t i = 0; i < m_colliders.size(); ++i)
+    {
+        DirectX::XMVECTOR transformedOffset =
+            DirectX::XMVector3Transform(
+                m_originalOffsets[i],
+                combinedRot
+            );
 
         DirectX::XMFLOAT3 c;
         DirectX::XMStoreFloat3(&c, transformedOffset);

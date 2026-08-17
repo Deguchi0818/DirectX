@@ -451,7 +451,7 @@ void GameInstance::CreateScene()
     m_sword.Initialize(swordData);
     m_sword.transform.SetScale(0.1f, 0.1f, 0.1f);
     m_sword.transform.SetRotation(0.0f, -110.0f, 90.0f);
-    //m_sword.transform.SetPosition(-20.0f, 8.0f, -10.0f);
+    m_sword.transform.SetPosition(0.0f, 2.0f, 0.0f);
     m_player.EquipWeapon(&m_sword, "mixamorig:RightHand");
 
 

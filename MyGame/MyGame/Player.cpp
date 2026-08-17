@@ -85,7 +85,8 @@ void Player::Update(float dt, float camYaw)
 		if (diff < -180.0f) diff += 360.0f;
 		if (diff > 180.0f) diff -= 360.0f;
 
-        float newYaw = currentYaw + diff * 0.2f;
+        const float turnBlend = 1.0f - expf(-m_turnSpeed * dt);
+        float newYaw = currentYaw + diff * turnBlend;
         transform.SetRotation(0.0f, newYaw, 0.0f);
 
         transform.UpdateMatrix();
@@ -118,7 +119,7 @@ void Player::Update(float dt, float camYaw)
 
     }
 
-    if(m_state == PlayerState::Attack)
+    else if(m_state == PlayerState::Attack)
     {
         m_attackTimer += dt;
 
@@ -126,7 +127,9 @@ void Player::Update(float dt, float camYaw)
 
         if (m_attackTimer >= animDuration) // 攻撃アニメーションの長さに応じて調整
         {
-            m_state = PlayerState::Idle; // 攻撃終了後は待機状態に戻す
+            m_state = (m_isGrounded && len > 0.5f)
+                ? PlayerState::Run
+                : PlayerState::Idle;
         }
 	}
 

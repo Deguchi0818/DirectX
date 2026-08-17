@@ -390,18 +390,19 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
     outLocalMatrices.resize(m_bones.size(), DirectX::XMMatrixIdentity());
     outHasAnim.resize(m_bones.size(), false);
 
-    // アニメーション未読み込み時は安全に抜ける
-    if (m_animations.empty()) return;
+    // 指定されたアニメーションが未読み込みなら安全に抜ける。
+    // operator[] は空の AnimationClip を追加してしまうため使用しない。
+    const auto clipIt = m_animations.find(animName);
+    if (clipIt == m_animations.end()) return;
 
-    AnimationClip& clip = m_animations[animName];
-
-    //AnimationClip& clip = m_animations[0];
+    const AnimationClip& clip = clipIt->second;
+    if (clip.duration <= 0.0f || clip.ticksPerSecond <= 0.0f) return;
 
     // --------------------------------------------------------
     // 再生時間（Ticks）の計算とループ制御
     // --------------------------------------------------------
-    float timeInTicks = timeInSeconds * clip.ticksPerSecond;
-    float animationTime = fmod(timeInTicks, clip.duration);
+    const float timeInTicks = std::max(0.0f, timeInSeconds) * clip.ticksPerSecond;
+    float animationTime = 0.0f;
     if (isLoop)
     {
         // アニメーション時間を 0〜duration の範囲内に収めて循環させる
@@ -410,8 +411,7 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
     else
     {
         // 単発再生：末尾のフレームで停止させる（配列外参照防止のため微小値を引く）
-        animationTime = std::min(timeInTicks, clip.duration - 0.001f);
-
+        animationTime = std::min(timeInTicks, std::max(0.0f, clip.duration - 0.001f));
     }
     // --------------------------------------------------------
     // 各ボーンのローカル姿勢（SRT）を計算
@@ -452,10 +452,11 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
         }
 
         // ボーンに対応するアニメーションが存在する場合、補間計算を行う
-        if (clip.channels.count(searchName) > 0)
+        const auto channelIt = clip.channels.find(searchName);
+        if (channelIt != clip.channels.end())
         {
             outHasAnim[i] = true;
-            BoneAnimation& anim = clip.channels[searchName];
+            const BoneAnimation& anim = channelIt->second;
 
             // --- スケールの線形補間（Lerp） ---
             DirectX::XMVECTOR scale = DirectX::XMVectorSet(1, 1, 1, 0);
@@ -473,47 +474,47 @@ void Model::UpdateAnimation(const std::string& animName, float timeInSeconds, st
                 DirectX::XMVECTOR start = DirectX::XMVectorSet(anim.scaleKeys[idx].value.x, anim.scaleKeys[idx].value.y, anim.scaleKeys[idx].value.z, 0);
                 DirectX::XMVECTOR end = DirectX::XMVectorSet(anim.scaleKeys[nextIdx].value.x, anim.scaleKeys[nextIdx].value.y, anim.scaleKeys[nextIdx].value.z, 0);
                 scale = DirectX::XMVectorLerp(start, end, factor);
-
-                // --- 回転の球面線形補間（Slerp） ---
-                DirectX::XMVECTOR rotation = DirectX::XMQuaternionIdentity();
-                if (anim.rotationKeys.size() == 1) {
-                    rotation = anim.rotationKeys[0].value;
-                }
-                else if (anim.rotationKeys.size() > 1) {
-                    int idx = FindKeyIndex(animationTime, anim.rotationKeys);
-                    int nextIdx = idx + 1;
-
-                    float dt = anim.rotationKeys[nextIdx].time - anim.rotationKeys[idx].time;
-                    float factor = (dt > 0.0f) ? (animationTime - anim.rotationKeys[idx].time) / dt : 0.0f;
-                    factor = std::clamp(factor, 0.0f, 1.0f);
-
-                    // 回転時のモデルの歪みを防ぐためSlerp(球面線形補間)を使用
-                    rotation = DirectX::XMQuaternionSlerp(anim.rotationKeys[idx].value, anim.rotationKeys[nextIdx].value, factor);
-
-                    // --- 位置の線形補間（Lerp） ---
-                    DirectX::XMVECTOR position = DirectX::XMVectorSet(0, 0, 0, 1);
-                    if (anim.positionKeys.size() == 1) {
-                        position = DirectX::XMVectorSet(anim.positionKeys[0].value.x, anim.positionKeys[0].value.y, anim.positionKeys[0].value.z, 1);
-                    }
-                    else if (anim.positionKeys.size() > 1) {
-                        int idx = FindKeyIndex(animationTime, anim.positionKeys);
-                        int nextIdx = idx + 1;
-                        float dt = anim.positionKeys[nextIdx].time - anim.positionKeys[idx].time;
-                        float factor = (dt > 0.0f) ? (animationTime - anim.positionKeys[idx].time) / dt : 0.0f;
-                        factor = std::clamp(factor, 0.0f, 1.0f);
-                        DirectX::XMVECTOR start = DirectX::XMVectorSet(anim.positionKeys[idx].value.x, anim.positionKeys[idx].value.y, anim.positionKeys[idx].value.z, 1);
-                        DirectX::XMVECTOR end = DirectX::XMVectorSet(anim.positionKeys[nextIdx].value.x, anim.positionKeys[nextIdx].value.y, anim.positionKeys[nextIdx].value.z, 1);
-                        position = DirectX::XMVectorLerp(start, end, factor);
-                    }
-
-                    // --- SRT行列の合成（Scale -> Rotate -> Translate） ---
-                    DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScalingFromVector(scale);
-                    DirectX::XMMATRIX rotMat = DirectX::XMMatrixRotationQuaternion(rotation);
-                    DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslationFromVector(position);
-
-                    outLocalMatrices[i] = scaleMat * rotMat * transMat;
-                }
             }
+
+            // --- 回転の球面線形補間（Slerp） ---
+            DirectX::XMVECTOR rotation = DirectX::XMQuaternionIdentity();
+            if (anim.rotationKeys.size() == 1) {
+                rotation = anim.rotationKeys[0].value;
+            }
+            else if (anim.rotationKeys.size() > 1) {
+                int idx = FindKeyIndex(animationTime, anim.rotationKeys);
+                int nextIdx = idx + 1;
+
+                float dt = anim.rotationKeys[nextIdx].time - anim.rotationKeys[idx].time;
+                float factor = (dt > 0.0f) ? (animationTime - anim.rotationKeys[idx].time) / dt : 0.0f;
+                factor = std::clamp(factor, 0.0f, 1.0f);
+
+                // 回転時のモデルの歪みを防ぐためSlerp(球面線形補間)を使用
+                rotation = DirectX::XMQuaternionSlerp(anim.rotationKeys[idx].value, anim.rotationKeys[nextIdx].value, factor);
+            }
+
+            // --- 位置の線形補間（Lerp） ---
+            DirectX::XMVECTOR position = DirectX::XMVectorSet(0, 0, 0, 1);
+            if (anim.positionKeys.size() == 1) {
+                position = DirectX::XMVectorSet(anim.positionKeys[0].value.x, anim.positionKeys[0].value.y, anim.positionKeys[0].value.z, 1);
+            }
+            else if (anim.positionKeys.size() > 1) {
+                int idx = FindKeyIndex(animationTime, anim.positionKeys);
+                int nextIdx = idx + 1;
+                float dt = anim.positionKeys[nextIdx].time - anim.positionKeys[idx].time;
+                float factor = (dt > 0.0f) ? (animationTime - anim.positionKeys[idx].time) / dt : 0.0f;
+                factor = std::clamp(factor, 0.0f, 1.0f);
+                DirectX::XMVECTOR start = DirectX::XMVectorSet(anim.positionKeys[idx].value.x, anim.positionKeys[idx].value.y, anim.positionKeys[idx].value.z, 1);
+                DirectX::XMVECTOR end = DirectX::XMVectorSet(anim.positionKeys[nextIdx].value.x, anim.positionKeys[nextIdx].value.y, anim.positionKeys[nextIdx].value.z, 1);
+                position = DirectX::XMVectorLerp(start, end, factor);
+            }
+
+            // --- SRT行列の合成（Scale -> Rotate -> Translate） ---
+            DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScalingFromVector(scale);
+            DirectX::XMMATRIX rotMat = DirectX::XMMatrixRotationQuaternion(rotation);
+            DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslationFromVector(position);
+
+            outLocalMatrices[i] = scaleMat * rotMat * transMat;
         }
     }
 }
@@ -535,12 +536,14 @@ bool Model::LoadAnimation(const std::string& animName, const std::string& filena
     return true;
 }
 
-float Model::GetAnimationDuration(const std::string& animName)
+float Model::GetAnimationDuration(const std::string& animName) const
 {
-    if (m_animations.count(animName) > 0)
-    {
-        // Ticks(総フレーム数) を TicksPerSecond(1秒間のフレーム数) で割って「秒数」にする
-        return m_animations[animName].duration / m_animations[animName].ticksPerSecond;
-    }
-    return 0.0f; // アニメーションが無い場合は0を返す
+    const auto clipIt = m_animations.find(animName);
+    if (clipIt == m_animations.end()) return 0.0f;
+
+    const AnimationClip& clip = clipIt->second;
+    if (clip.duration <= 0.0f || clip.ticksPerSecond <= 0.0f) return 0.0f;
+
+    // Ticks(総フレーム数) を TicksPerSecond(1秒間のフレーム数) で割って「秒数」にする
+    return clip.duration / clip.ticksPerSecond;
 }

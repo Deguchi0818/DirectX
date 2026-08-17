@@ -83,7 +83,7 @@ public:
     // アニメーションデータを保存する配列
     std::map<std::string, AnimationClip> m_animations;
 
-    float GetAnimationDuration(const std::string& animName);
+    float GetAnimationDuration(const std::string& animName) const;
 private:
     Mesh m_mesh;
 
