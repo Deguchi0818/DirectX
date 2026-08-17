@@ -48,6 +48,6 @@ private:
 	PlayerState m_state = PlayerState::Idle;
 	std::map<PlayerState, std::string> m_stateAnimMap;
 	int m_handBoneIndex = -1;
-
+	float m_attackTimer = 0.0f;
 };
 

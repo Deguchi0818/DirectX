@@ -534,3 +534,13 @@ bool Model::LoadAnimation(const std::string& animName, const std::string& filena
     }
     return true;
 }
+
+float Model::GetAnimationDuration(const std::string& animName)
+{
+    if (m_animations.count(animName) > 0)
+    {
+        // Ticks(総フレーム数) を TicksPerSecond(1秒間のフレーム数) で割って「秒数」にする
+        return m_animations[animName].duration / m_animations[animName].ticksPerSecond;
+    }
+    return 0.0f; // アニメーションが無い場合は0を返す
+}

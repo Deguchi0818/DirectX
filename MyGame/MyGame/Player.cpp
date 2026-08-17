@@ -52,7 +52,7 @@ void Player::Update(float dt, float camYaw)
     UpdateAnimTimer(dt);
 
     float len = sqrtf(moveX * moveX + moveZ * moveZ);
-    if (len > 0.0f)
+    if (len > 0.5f)
     {
         if (m_isGrounded) m_state = PlayerState::Run;
         // 入力の強さを保存
@@ -73,10 +73,20 @@ void Player::Update(float dt, float camYaw)
         vel.z = finalMoveZ * m_moveSpeed * inputIntensity;
 
         float targetYaw = atan2f(finalMoveX, finalMoveZ) * (180.0f / 3.14159265f);
-        transform.SetRotation(0.0f, targetYaw - 180.0f, 0.0f);
+        //transform.SetRotation(0.0f, targetYaw - 180.0f, 0.0f);
 
         //float targetYaw = atan2f(finalMoveX, finalMoveZ) * (180.0f / 3.14159265f);
         //transform.SetRotation(90.0f, targetYaw + -90.0f, 0.0f);
+
+		float currentYaw = transform.GetRotation().y;
+		float target = targetYaw - 180.0f;
+
+		float diff = fmodf(target - currentYaw, 360.0f);
+		if (diff < -180.0f) diff += 360.0f;
+		if (diff > 180.0f) diff -= 360.0f;
+
+        float newYaw = currentYaw + diff * 0.2f;
+        transform.SetRotation(0.0f, newYaw, 0.0f);
 
         transform.UpdateMatrix();
     }
@@ -101,10 +111,24 @@ void Player::Update(float dt, float camYaw)
         coyoteTimer = -1.0f;
     }
 
-    if (Input::GetKeyDown('Q') && (m_isGrounded))
+    if (Input::GetKeyDown('Q') && m_isGrounded && m_state != PlayerState::Attack)
     {
         m_state = PlayerState::Attack;
+		m_attackTimer = 0.0f;
+
     }
+
+    if(m_state == PlayerState::Attack)
+    {
+        m_attackTimer += dt;
+
+		float animDuration = pModel->GetAnimationDuration(m_stateAnimMap[m_state]);
+
+        if (m_attackTimer >= animDuration) // 攻撃アニメーションの長さに応じて調整
+        {
+            m_state = PlayerState::Idle; // 攻撃終了後は待機状態に戻す
+        }
+	}
 
     SetVelocity(vel);
 
