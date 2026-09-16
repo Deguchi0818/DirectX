@@ -1,52 +1,70 @@
 ﻿#include "Collider.h"
+#include <cmath>
+namespace {
+    // 点をワールド行列で変換する(行ベクトル規約)
+    MyVector3 TransformPoint(const MyVector3& p, const MyMatrix4x4& m)
+    {
+        return {
+            p.x * m.m[0][0] + p.y * m.m[1][0] + p.z * m.m[2][0] + m.m[3][0],
+            p.x * m.m[0][1] + p.y * m.m[1][1] + p.z * m.m[2][1] + m.m[3][1],
+            p.x * m.m[0][2] + p.y * m.m[1][2] + p.z * m.m[2][2] + m.m[3][2]
+        };
+    }
 
-AABB ColliderComponent::GetWorldAABB(const MyVector3& parentPos, const MyVector3& parentScale) const 
+    // ワールド行列からスケール成分を取り出す(各行の長さ)
+    MyVector3 ExtractScale(const MyMatrix4x4& m)
+    {
+        auto len = [](const float r[4]) {
+            return sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+            };
+        return { len(m.m[0]), len(m.m[1]), len(m.m[2]) };
+    }
+}
+
+AABB ColliderComponent::GetWorldAABB(const MyMatrix4x4& world) const
 {
-    // 親のスケールを考慮してオフセットとサイズを計算
-    MyVector3 worldCenter = {
-        parentPos.x + offset.x * parentScale.x,
-        parentPos.y + offset.y * parentScale.y,
-        parentPos.z + offset.z * parentScale.z
-    };
+    // 中心は行列で変換する(回転・親の影響もここに含まれる)
+    MyVector3 center = TransformPoint(offset, world);
 
-    MyVector3 worldHalfSize = {
-        (scale.x * parentScale.x) * 0.5f,
-        (scale.y * parentScale.y) * 0.5f,
-        (scale.z * parentScale.z) * 0.5f
+    // AABBは軸平行なので、サイズにはスケールのみを反映する
+    MyVector3 ws = ExtractScale(world);
+    MyVector3 half = {
+        (scale.x * ws.x) * 0.5f,
+        (scale.y * ws.y) * 0.5f,
+        (scale.z * ws.z) * 0.5f
     };
 
     return {
-        .min = { worldCenter.x - worldHalfSize.x, worldCenter.y - worldHalfSize.y, worldCenter.z - worldHalfSize.z },
-        .max = { worldCenter.x + worldHalfSize.x, worldCenter.y + worldHalfSize.y, worldCenter.z + worldHalfSize.z }
+        .min = { center.x - half.x, center.y - half.y, center.z - half.z },
+        .max = { center.x + half.x, center.y + half.y, center.z + half.z }
     };
 }
 
-Sphere ColliderComponent::GetWorldSphere(const MyVector3& parentPos, const MyVector3& parentScale) const
+Sphere ColliderComponent::GetWorldSphere(const MyMatrix4x4& world) const
 {
+    MyVector3 center = TransformPoint(offset, world);
+    MyVector3 ws = ExtractScale(world);
+
     return {
-        .x = parentPos.x + offset.x * parentScale.x,
-        .y = parentPos.y + offset.y * parentScale.y,
-        .z = parentPos.z + offset.z * parentScale.z,
-        .radius = radius * parentScale.x
+        .x = center.x,
+        .y = center.y,
+        .z = center.z,
+        .radius = radius * ws.x
     };
 }
 
-Capsule ColliderComponent::GetWorldCapsule(const MyVector3& parentPos, const MyVector3& parentScale) const
+Capsule ColliderComponent::GetWorldCapsule(const MyMatrix4x4& world) const
 {
-    MyVector3 worldP1 = {
-        parentPos.x + offset.x * parentScale.x,
-        parentPos.y + (offset.y + height * 0.5f) * parentScale.y,
-        parentPos.z + offset.z * parentScale.z
-    };
-    MyVector3 worldP2 = {
-        parentPos.x + offset.x * parentScale.x,
-        parentPos.y + (offset.y - height * 0.5f) * parentScale.y,
-        parentPos.z + offset.z * parentScale.z
-    };
+    // ローカル空間で上下の端点を作ってから、まとめて行列変換する
+    MyVector3 localP1 = { offset.x, offset.y + height * 0.5f, offset.z };
+    MyVector3 localP2 = { offset.x, offset.y - height * 0.5f, offset.z };
+
+    MyVector3 ws = ExtractScale(world);
+
     return {
-        .p1 = worldP1,
-        .p2 = worldP2,
-        .radius = radius * parentScale.x
+        .p1 = TransformPoint(localP1, world),
+        .p2 = TransformPoint(localP2, world),
+        .radius = radius * ws.x
     };
 }
 

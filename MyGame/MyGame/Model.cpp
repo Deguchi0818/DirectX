@@ -9,6 +9,7 @@
 #include <system_error>
 #include <vector>
 #include <map>
+#include <functional>
 
 namespace fs = std::filesystem;
 
@@ -546,4 +547,100 @@ float Model::GetAnimationDuration(const std::string& animName) const
 
     // Ticks(総フレーム数) を TicksPerSecond(1秒間のフレーム数) で割って「秒数」にする
     return clip.duration / clip.ticksPerSecond;
+}
+
+void Model::CalculateBoneMatrices(const std::string& animName,
+    float timeInSeconds,
+    bool isLoop,
+    std::vector<DirectX::XMMATRIX>& outBoneWorlds,
+    std::vector<DirectX::XMMATRIX>& outSkinMatrices)
+{
+    outBoneWorlds.assign(256, DirectX::XMMatrixIdentity());
+    outSkinMatrices.assign(256, DirectX::XMMatrixIdentity());
+
+    if (m_bones.empty()) return;
+
+    // このフレームのアニメーション姿勢を取得
+    std::vector<DirectX::XMMATRIX> animMatrices;
+    std::vector<bool> hasAnim;
+    UpdateAnimation(animName, timeInSeconds, animMatrices, hasAnim, isLoop);
+
+    // ボーンの階層順に計算するための再帰処理
+    std::vector<bool> isCalculated(m_bones.size(), false);
+
+    std::function<void(int)> CalcBoneMatrix = [&](int boneIdx) {
+        if (isCalculated[boneIdx]) return; // 既に計算済みならスキップ
+
+        int parentIdx = m_bones[boneIdx].parentIndex;
+
+        // 親がいるなら、自分の計算の前に親を計算させる
+        if (parentIdx != -1) {
+            CalcBoneMatrix(parentIdx);
+        }
+
+        DirectX::XMVECTOR det;
+        // 自分の初期姿勢
+        DirectX::XMMATRIX globalBind = DirectX::XMMatrixInverse(&det, m_bones[boneIdx].offset);
+
+        // 親からの相対的な位置(ローカル空間の初期姿勢)を計算
+        DirectX::XMMATRIX localBind;
+        if (parentIdx != -1)
+        {
+            localBind = globalBind * m_bones[parentIdx].offset;
+        }
+        else {
+            localBind = globalBind;
+        }
+
+        DirectX::XMMATRIX newLocal;
+        if (hasAnim[boneIdx])
+        {
+            if (parentIdx != -1)
+            {
+                // 子ボーン: 位置はTポーズから、回転はアニメから
+                DirectX::XMVECTOR bindScale, bindRot, bindTrans;
+                DirectX::XMMatrixDecompose(&bindScale, &bindRot, &bindTrans, localBind);
+
+                DirectX::XMVECTOR animScale, animRot, animTrans;
+                DirectX::XMMatrixDecompose(&animScale, &animRot, &animTrans, animMatrices[boneIdx]);
+
+                animRot = DirectX::XMQuaternionNormalize(animRot);
+
+                // 綺麗な関節位置を保ったまま、回転だけを適用して合成
+                newLocal = DirectX::XMMatrixScalingFromVector(bindScale) *
+                    DirectX::XMMatrixRotationQuaternion(animRot) *
+                    DirectX::XMMatrixTranslationFromVector(bindTrans);
+            }
+            else
+            {
+                // ルートボーン: 移動量が含まれるのでそのまま使う
+                newLocal = animMatrices[boneIdx];
+            }
+        }
+        else
+        {
+            newLocal = localBind;
+        }
+
+        if (parentIdx != -1) {
+            outBoneWorlds[boneIdx] = newLocal * outBoneWorlds[parentIdx];
+        }
+        else {
+            outBoneWorlds[boneIdx] = newLocal;
+        }
+
+        isCalculated[boneIdx] = true;
+        };
+
+    // 全てのボーンに対して再帰計算を実行
+    for (int i = 0; i < (int)m_bones.size(); i++)
+    {
+        CalcBoneMatrix(i);
+    }
+
+    // 最後にスキニング行列を確定させる
+    for (int i = 0; i < (int)m_bones.size(); i++)
+    {
+        outSkinMatrices[i] = m_bones[i].offset * outBoneWorlds[i];
+    }
 }

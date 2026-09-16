@@ -1,5 +1,6 @@
 #pragma once
 #include "Common.h"
+#include "MyMatrix4x4.h"
 #include <string>
 #include <vector>
 
@@ -26,9 +27,9 @@ struct ColliderComponent
     // --------------------------------------------------------
     // ローカル座標からワールド座標への変換（実際の当たり判定用）
     // --------------------------------------------------------
-    AABB GetWorldAABB(const MyVector3& parentPos, const MyVector3& parentScale) const;
-    Sphere GetWorldSphere(const MyVector3& parentPos, const MyVector3& parentScale) const;
-    Capsule GetWorldCapsule(const MyVector3& parentPos, const MyVector3& parentScale) const;
+    AABB GetWorldAABB(const MyMatrix4x4& world) const;
+    Sphere GetWorldSphere(const MyMatrix4x4& world) const;
+    Capsule GetWorldCapsule(const MyMatrix4x4& world) const;
 };
 
 // --------------------------------------------------------

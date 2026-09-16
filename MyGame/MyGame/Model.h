@@ -63,7 +63,11 @@ public:
     // アニメーションの現在の姿勢を計算する関数
     void UpdateAnimation(const std::string& animName, float timeInSeconds, std::vector<DirectX::XMMATRIX>& outLocalMatrices, std::vector<bool>& outHasAnim, bool isLoop = true);
 
-
+    void CalculateBoneMatrices(const std::string& animName,
+        float timeInSeconds,
+        bool isLoop,
+        std::vector<DirectX::XMMATRIX>& outBoneWorlds,
+        std::vector<DirectX::XMMATRIX>& outSkinMatrices);
 
     // メッシュを描画する
     void Draw(ID3D11DeviceContext* context, Shader* shader);

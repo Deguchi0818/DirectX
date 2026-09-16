@@ -16,8 +16,6 @@ private:
     WeaponData m_data;
     bool m_isAttacking = false;
 
-    std::vector<DirectX::XMVECTOR> m_originalOffsets;
-
 public:
     void Initialize(const WeaponData& data);
 
@@ -26,6 +24,5 @@ public:
 
     virtual void OnTriggerEnter(GameObject* other) override;
 
-    void FollowToBone(const DirectX::XMMATRIX& handMatrix);
 };
 

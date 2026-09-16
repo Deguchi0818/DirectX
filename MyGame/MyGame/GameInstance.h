@@ -16,6 +16,7 @@
 #include "DebugRenderer.h"
 #include "ResourceManager.h"
 
+
 class GameInstance
 {
 public:
@@ -36,6 +37,8 @@ private:
 	void CreateScene();                      // オブジェクトの配置と物理登録
 
 	void UpdateSystem();
+	void UpdateTransforms();
+	void UpdateAnimation();
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer>           m_constantBuffer;
 
@@ -54,6 +57,9 @@ private:
 
 	std::chrono::high_resolution_clock::time_point m_lastTime;
 	float m_deltaTime = 0.0f;
+
+	std::vector<DirectX::XMMATRIX> m_boneWorlds;    // ボーンのワールド行列
+	std::vector<DirectX::XMMATRIX> m_skinMatrices;	// シェーダーへ送るスキニング行列
 
 	bool m_isDebugMode = false;
 };

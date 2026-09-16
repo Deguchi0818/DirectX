@@ -2,6 +2,7 @@
 #include "GameObject.h"
 #include "Camera.h"
 #include "Weapon.h"
+#include "BoneAttachment.h"
 
 
 enum class PlayerState
@@ -32,11 +33,15 @@ public:
 	void EquipWeapon(Weapon* weapon, const std::string& boneName) {
 		m_equippedWeapon = weapon;
 		if (pModel) {
-			m_handBoneIndex = pModel->GetBoneIndex(boneName);
+			m_weaponAttachment.Attach(weapon, pModel->GetBoneIndex(boneName));
 		}
 	}
 
-	void DrawWeapon(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj, const std::vector<DirectX::XMMATRIX>& worldMatrices);
+	// èƒ{[ƒ“‚Ìp¨‚ğŒ•‚É”½‰f‚·‚é(Update‚ÉŒÄ‚Ô)
+	void UpdateWeaponTransform(const std::vector<DirectX::XMMATRIX>& boneWorlds);
+
+	// Œ•‚ğ•`‰æ‚·‚é(Render‚ÉŒÄ‚Ô)
+	void DrawWeapon(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj);
 
 private:
 	float m_moveSpeed = 5.0f;
@@ -47,7 +52,8 @@ private:
 	bool m_isGrounded = false;
 	PlayerState m_state = PlayerState::Idle;
 	std::map<PlayerState, std::string> m_stateAnimMap;
-	int m_handBoneIndex = -1;
 	float m_attackTimer = 0.0f;
+	BoneAttachment m_weaponAttachment;
+
 };
 

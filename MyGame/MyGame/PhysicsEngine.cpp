@@ -65,6 +65,9 @@ void PhysicsEngine::ResolveCollisions()
 // --------------------------------------------------------
 void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b) 
 {
+    const MyMatrix4x4& matA = a->transform.GetWorldMatrix();
+    const MyMatrix4x4& matB = b->transform.GetWorldMatrix();
+
     for (const auto& colA : a->m_colliders)
     {
         for (const auto& colB : b->m_colliders)
@@ -76,8 +79,8 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
             // AABB vs AABB
             if (colA.type == ColliderType::AABB && colB.type == ColliderType::AABB)
             {
-                AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
-                AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+                AABB worldA = colA.GetWorldAABB(matA);
+                AABB worldB = colB.GetWorldAABB(matB);
 
                 if (Collider::AABBCollider(worldA, worldB))
                 {
@@ -91,8 +94,8 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
             // Sphere vs Sphere
             else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::Sphere)
             {
-                Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
-                Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
+                Sphere worldA = colA.GetWorldSphere(matA);
+                Sphere worldB = colB.GetWorldSphere(matB);
 
                 if (Collider::SphereCollider(worldA, worldB))
                 {
@@ -102,8 +105,8 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
             // Sphere (A) vs AABB (B)
             else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::AABB)
             {
-                Sphere worldA = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
-                AABB worldB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+                Sphere worldA = colA.GetWorldSphere(matA);
+                AABB worldB = colB.GetWorldAABB(matB);
 
                 if (Collider::SphereVsAABB(worldA, worldB))
                 {
@@ -118,8 +121,8 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
             // AABB (A) vs Sphere (B)
             else if (colA.type == ColliderType::AABB && colB.type == ColliderType::Sphere)
             {
-                AABB worldA = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
-                Sphere worldB = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
+                AABB worldA = colA.GetWorldAABB(matA);
+                Sphere worldB = colB.GetWorldSphere(matB);
 
                 if (Collider::SphereVsAABB(worldB, worldA))
                 {
@@ -135,8 +138,8 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
             // Capsule (A) vs AABB (B)
             else if (colA.type == ColliderType::Capsule && colB.type == ColliderType::AABB)
             {
-                Capsule worldCapsule = colA.GetWorldCapsule(a->transform.GetPosition(), a->transform.GetScale());
-                AABB worldAABB = colB.GetWorldAABB(b->transform.GetPosition(), b->transform.GetScale());
+                Capsule worldCapsule = colA.GetWorldCapsule(matA);
+                AABB worldAABB = colB.GetWorldAABB(matB);
 
                 if (Collider::CapsuleVsAABB(worldCapsule, worldAABB))
                 {
@@ -150,8 +153,8 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
             // AABB (A) vs Capsule (B) -- ‹tƒpƒ^[ƒ“
             else if (colA.type == ColliderType::AABB && colB.type == ColliderType::Capsule)
             {
-                AABB worldAABB = colA.GetWorldAABB(a->transform.GetPosition(), a->transform.GetScale());
-                Capsule worldCapsule = colB.GetWorldCapsule(b->transform.GetPosition(), b->transform.GetScale());
+                AABB worldAABB = colA.GetWorldAABB(matA);
+                Capsule worldCapsule = colB.GetWorldCapsule(matB);
 
                 if (Collider::CapsuleVsAABB(worldCapsule, worldAABB))
                 {
@@ -166,8 +169,8 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
 
             else if (colA.type == ColliderType::Capsule && colB.type == ColliderType::Sphere)
             {
-                Capsule worldCapsule = colA.GetWorldCapsule(a->transform.GetPosition(), a->transform.GetScale());
-                Sphere worldSphere = colB.GetWorldSphere(b->transform.GetPosition(), b->transform.GetScale());
+                Capsule worldCapsule = colA.GetWorldCapsule(matA);
+                Sphere worldSphere = colB.GetWorldSphere(matB);
 
                 if (Collider::CapsuleVsSphere(worldCapsule, worldSphere))
                 {
@@ -181,8 +184,8 @@ void PhysicsEngine::CheckAndResolveCollision(GameObject* a, GameObject* b)
 
             else if (colA.type == ColliderType::Sphere && colB.type == ColliderType::Capsule)
             {
-                Capsule worldCapsule = colB.GetWorldCapsule(b->transform.GetPosition(), b->transform.GetScale());
-                Sphere worldSphere = colA.GetWorldSphere(a->transform.GetPosition(), a->transform.GetScale());
+                Capsule worldCapsule = colB.GetWorldCapsule(matB);
+                Sphere worldSphere = colA.GetWorldSphere(matA);
 
                 if (Collider::CapsuleVsSphere(worldCapsule, worldSphere))
                 {

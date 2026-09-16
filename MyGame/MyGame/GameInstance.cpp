@@ -34,6 +34,9 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
 
     CreateScene();
 
+    UpdateAnimation();
+    UpdateTransforms();
+
     m_camera.GetTransform().SetPosition(0.0f, 2.0f, -5.0f);
 
     m_lastTime = std::chrono::high_resolution_clock::now();
@@ -68,9 +71,37 @@ void GameInstance::Update()
    
     m_player.Update(m_deltaTime, m_camera.GetYaw());
 
+    UpdateAnimation();
+
     m_physics.Update(m_deltaTime);
 
     m_camera.UpdateTPS(m_player.transform.GetPosition());
+
+    UpdateTransforms();
+}
+
+void GameInstance::UpdateAnimation()
+{
+    Model* pModel = m_resourceManager.GetModel("Player");
+    if (!pModel) return;
+
+    std::string currentAnim = m_player.GetCurrentAnimName();
+    float animTime = m_player.GetAnimTimer();
+    bool isLoop = (currentAnim != "Jump");
+
+    pModel->CalculateBoneMatrices(currentAnim, animTime, isLoop,
+        m_boneWorlds, m_skinMatrices);
+}
+
+void GameInstance::UpdateTransforms()
+{
+    // 親 → 子 の順に呼ぶこと
+    for (auto& obj : m_terrain)     obj.transform.UpdateMatrix();
+    for (auto& obj : m_gameObjects) obj.transform.UpdateMatrix();
+
+    m_player.transform.UpdateMatrix();
+
+    m_player.UpdateWeaponTransform(m_boneWorlds);
 }
 
 void GameInstance::UpdateSystem() 
@@ -138,13 +169,6 @@ void GameInstance::Render()
     static float timer = 0.0f;
     timer += m_deltaTime;
 
-    std::vector<DirectX::XMMATRIX> animMatrices;
-    std::vector<bool> hasAnim;
-    std::string currentAnim = m_player.GetCurrentAnimName();
-    float animTime = m_player.GetAnimTimer();
-    bool isLoop = (currentAnim != "Jump");
-    pModel->UpdateAnimation(currentAnim, animTime, animMatrices, hasAnim);
-
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
@@ -165,11 +189,7 @@ void GameInstance::Render()
     ImGui::Text("Model Bone Count: %d", (int)pModel->m_bones.size());
     ImGui::Text("Animation Count: %d", (int)pModel->m_animations.size());
 
-    int animBoneCount = 0;
-    for (bool b : hasAnim) {
-        if (b) animBoneCount++;
-    }
-    ImGui::Text("Animated Bones: %d", animBoneCount);
+    ImGui::Text("Bone Matrices: %d", (int)m_skinMatrices.size());
     ImGui::Text("Timer: %.2f", timer);
     ImGui::End();
 
@@ -189,95 +209,8 @@ void GameInstance::Render()
 
     auto context = m_graphics.GetContext();
 
-
-
-    // GPUに送る最終的な行列
-    std::vector<DirectX::XMMATRIX> finalBones(256, DirectX::XMMatrixIdentity());
-    // GPUに送る最終的な行列
-    std::vector<DirectX::XMMATRIX> worldMatrices(256, DirectX::XMMatrixIdentity());
-
-    // ボーンの階層順に計算するための再帰処理
-    std::vector<bool> isCalculated(pModel->m_bones.size(), false);
-
-    std::function<void(int)> CalcBoneMatrix = [&](int boneIdx) {
-        if (isCalculated[boneIdx]) return; // 既に計算済みならスキップ
-
-        int parentIdx = pModel->m_bones[boneIdx].parentIndex;
-
-        // 親がいるなら、自分の計算の前に親を計算させる
-        if (parentIdx != -1) {
-            CalcBoneMatrix(parentIdx);
-        }
-
-
-        DirectX::XMVECTOR det;
-        // 自分の初期姿勢
-        DirectX::XMMATRIX globalBind = DirectX::XMMatrixInverse(&det, pModel->m_bones[boneIdx].offset);
-
-        // 親からの相対的な位置（ローカル空間の初期姿勢）を計算
-        DirectX::XMMATRIX localBind;
-        if (parentIdx != -1) 
-        {
-            localBind = globalBind * pModel->m_bones[parentIdx].offset;
-        }
-        else {
-            localBind = globalBind;
-        }
-        DirectX::XMMATRIX newLocal;
-        if (hasAnim[boneIdx])
-        {
-            if (parentIdx != -1)
-            {
-                // 子ボーン：位置（Trans）は「Tポーズ（localBind）」から、回転（Rot）は「アニメ（animMatrices）」から！
-                DirectX::XMVECTOR bindScale, bindRot, bindTrans;
-                DirectX::XMMatrixDecompose(&bindScale, &bindRot, &bindTrans, localBind);
-
-                DirectX::XMVECTOR animScale, animRot, animTrans;
-                DirectX::XMMatrixDecompose(&animScale, &animRot, &animTrans, animMatrices[boneIdx]);
-
-                animRot = DirectX::XMQuaternionNormalize(animRot);
-
-                // 綺麗な関節位置を保ったまま、回転だけを適用して合成
-                newLocal = DirectX::XMMatrixScalingFromVector(bindScale) *
-                    DirectX::XMMatrixRotationQuaternion(animRot) *
-                    DirectX::XMMatrixTranslationFromVector(bindTrans);
-            }
-            else
-            {
-                // ルートボーン（一番親の腰など）：歩く・走るの移動量が含まれるのでそのまま使う
-                newLocal = animMatrices[boneIdx];
-            }
-        }
-        else 
-        {
-            newLocal = localBind;
-        }
-
-        if (parentIdx != -1) {
-            worldMatrices[boneIdx] = newLocal * worldMatrices[parentIdx];
-        }
-        else {
-            worldMatrices[boneIdx] = newLocal;
-        }
-
-        isCalculated[boneIdx] = true;
-        };
-
-    // 全てのボーンに対して再帰計算を実行
-    for (int i = 0; i < (int)pModel->m_bones.size(); i++)
-    {
-        CalcBoneMatrix(i);
-    }
-
-    // 最後にスキニング行列を確定させる
-    for (int i = 0; i < (int)pModel->m_bones.size(); i++)
-    {
-        finalBones[i] = pModel->m_bones[i].offset * worldMatrices[i];
-    }
-
-
     // GPUへ転送
-    m_baseShader.UpdateBones(context, finalBones);
+    m_baseShader.UpdateBones(context, m_skinMatrices);
     m_baseShader.Bind(context);
 
     ImGui::Begin("Debug Menu");
@@ -301,7 +234,7 @@ void GameInstance::Render()
     }
 
     m_player.Draw(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
-    m_player.DrawWeapon(context, &m_baseShader, m_constantBuffer.Get(), view, proj, worldMatrices);
+    m_player.DrawWeapon(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
 
 
     ImGui::Render();
@@ -316,20 +249,21 @@ void GameInstance::Render()
         // コライダーを DebugRenderer に登録するための便利なラムダ式（関数内関数）
         auto AddCollidersToDebug = [&](GameObject& obj) {
             if (!obj.m_showCollider) return;
+            const MyMatrix4x4& colMat = obj.transform.GetWorldMatrix();
 
             for (const auto& col : obj.m_colliders)
             {
                 if (col.type == ColliderType::AABB) {
-                    AABB worldAABB = col.GetWorldAABB(obj.transform.GetPosition(), obj.transform.GetScale());
+                    AABB worldAABB = col.GetWorldAABB(colMat);
                     m_debugRenderer.AddAABB(worldAABB, { 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
                 }
                 else if (col.type == ColliderType::Sphere) {
-                    Sphere worldSphere = col.GetWorldSphere(obj.transform.GetPosition(), obj.transform.GetScale());
+                    Sphere worldSphere = col.GetWorldSphere(colMat);
                     m_debugRenderer.AddSphere(worldSphere, { 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
                 }
                 else if (col.type == ColliderType::Capsule)
                 {
-                    Capsule worldCapsule = col.GetWorldCapsule(obj.transform.GetPosition(), obj.transform.GetScale());
+                    Capsule worldCapsule = col.GetWorldCapsule(colMat);
                     m_debugRenderer.AddCapsule(worldCapsule, { 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色で描画
                 }
             }
@@ -451,7 +385,7 @@ void GameInstance::CreateScene()
     m_sword.Initialize(swordData);
     m_sword.transform.SetScale(0.1f, 0.1f, 0.1f);
     m_sword.transform.SetRotation(0.0f, -110.0f, 90.0f);
-    m_sword.transform.SetPosition(0.0f, 2.0f, 0.0f);
+    m_sword.transform.SetPosition(0.0f, 0.0f, 0.0f);
     m_player.EquipWeapon(&m_sword, "mixamorig:RightHand");
 
 

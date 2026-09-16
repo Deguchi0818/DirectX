@@ -4,6 +4,7 @@
 #include "Mesh.h"
 #include "Model.h"
 #include "Collider.h"
+#include "MyMatrix4x4.h"
 
 #include <d3d11.h>
 #include <wrl/client.h>
@@ -16,8 +17,11 @@ protected:
     float m_animTimer = 0.0f;
 
 public:
+    // 継承したクラスを基底ポインタ経由で破棄できるようにする
+    virtual ~GameObject() = default;
+
 	Transform transform;
-    Model* pModel;
+    Model* pModel = nullptr;
 
     bool m_isTrigger = false;
     bool isStatic = false;
@@ -36,27 +40,17 @@ public:
     MyVector3 GetVelocity() const { return velocity; }
     void SetVelocity(const MyVector3& v) { velocity = v; }
 
-    void Draw(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj, DirectX::XMMATRIX* parentMatrix = nullptr)
+    void Draw(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb,
+        const MyMatrix4x4& view, const MyMatrix4x4& proj)
     {
-        if (!pModel) return; // メッシュがない場合は何もしない
+        if (!pModel) return;
 
-        // 行列の計算
-        transform.UpdateMatrix();
-        MyMatrix4x4 worldMat = transform.GetWorldMatrix();
-        MyMatrix4x4 viewMat = view;
-        MyMatrix4x4 projMat = proj;
-
-        DirectX::XMMATRIX world = *(DirectX::XMMATRIX*)&worldMat;
-        
-        if (parentMatrix != nullptr) {
-			world = world * (*parentMatrix);
-        }
-        
-        DirectX::XMMATRIX xmView = *(DirectX::XMMATRIX*)&viewMat;
-        DirectX::XMMATRIX xmProj = *(DirectX::XMMATRIX*)&projMat;
+        DirectX::XMMATRIX world  = ToXM(transform.GetWorldMatrix());
+        DirectX::XMMATRIX xmView = ToXM(view);
+        DirectX::XMMATRIX xmProj = ToXM(proj);
 
         DirectX::XMMATRIX wvp = world * xmView * xmProj;
-        // 定数バッファの更新
+
         ConstantBufferData cbData;
         cbData.wvp = wvp;
 
@@ -68,7 +62,6 @@ public:
         }
 
         ID3D11Buffer* pBuffer = cb;
-        // シェーダーに定数バッファをセット
         context->VSSetConstantBuffers(0, 1, &pBuffer);
 
         pModel->Draw(context, shader);
