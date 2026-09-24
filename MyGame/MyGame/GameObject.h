@@ -5,10 +5,12 @@
 #include "Model.h"
 #include "Collider.h"
 #include "MyMatrix4x4.h"
+#include "BoneAttachment.h"
 
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <vector>
+#include <memory>
 
 class GameObject
 {
@@ -100,5 +102,51 @@ public:
 
     // タイマーを進める関数
     void UpdateAnimTimer(float dt) { m_animTimer += dt; }
+
+
+    // --------------------------------------------------------
+    // ボーンへの装着
+    //   自分のモデルのボーンに、別のオブジェクトを取り付ける。
+    //   武器・盾・帽子など、すべて同じ仕組みで扱える。
+    //   ボーンを持たないオブジェクトに対しては何も起きない。
+    // --------------------------------------------------------
+    void AttachToBone(GameObject* target, const std::string& boneName)
+    {
+        if (!pModel) return;          // モデルが無い = ボーンも無い
+        if (!target) return;
+
+        int index = pModel->GetBoneIndex(boneName);
+        if (index < 0) return;        // そのボーンが存在しない
+
+        auto attachment = std::make_unique<BoneAttachment>();
+        attachment->Attach(target, index);
+        m_attachments.push_back(std::move(attachment));
+    }
+
+    // 取り付けたものの姿勢を更新する(Update時に呼ぶ)
+    void UpdateAttachments(const std::vector<DirectX::XMMATRIX>& boneWorlds)
+    {
+        for (auto& attachment : m_attachments)
+        {
+            attachment->Update(transform.GetWorldMatrix(), boneWorlds);
+        }
+    }
+
+    // 取り付けたものを描画する(Render時に呼ぶ)
+    void DrawAttachments(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb,
+        const MyMatrix4x4& view, const MyMatrix4x4& proj)
+    {
+        for (auto& attachment : m_attachments)
+        {
+            GameObject* target = attachment->GetTarget();
+            if (target) target->Draw(context, shader, cb, view, proj);
+        }
+    }
+
+protected:
+    // 取り付けたもの。BoneAttachment は内部に Transform を持ち、
+    // そのアドレスを子の親として登録しているため、
+    // 再配置でアドレスが変わらないよう unique_ptr で保持する。
+    std::vector<std::unique_ptr<BoneAttachment>> m_attachments;
 };
 

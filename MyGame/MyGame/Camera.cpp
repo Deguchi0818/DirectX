@@ -58,3 +58,20 @@ void Camera::UpdateTPS(const MyVector3& targetPos)
 	m_transform.SetPosition(camPos.x, camPos.y, camPos.z);
 	m_transform.UpdateMatrix();
 }
+
+void Camera::UpdateLockOn(const MyVector3& playerPos, const MyVector3& targetPos, float dt)
+{
+	constexpr float pi = std::numbers::pi_v<float>;
+
+	float dirX = targetPos.x - playerPos.x;
+	float dirZ = targetPos.z - playerPos.z;
+
+	float lockYaw = atan2f(dirX, dirZ);
+
+	float diff = fmodf(lockYaw - m_yaw, 2.0f * pi);
+	if (diff < -pi) diff += 2.0f * pi;
+	if (diff > pi) diff -= 2.0f * pi;
+
+	const float blend = 1.0f - expf(-m_lockOnSpeed * dt);
+	m_yaw += diff * blend;
+}

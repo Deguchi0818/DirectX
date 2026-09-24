@@ -9,7 +9,7 @@
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
-
+#include "Coin.h"
 
 #include <d3dcompiler.h>
 #pragma comment(lib, "d3dcompiler.lib")
@@ -32,10 +32,10 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
 
     if (!CreateAssets(device)) return false;
 
-    CreateScene();
+    m_scene.Create(m_resourceManager, m_physics);
 
-    UpdateAnimation();
-    UpdateTransforms();
+    m_scene.UpdateAnimation();
+    m_scene.UpdateTransforms();
 
     m_camera.GetTransform().SetPosition(0.0f, 2.0f, -5.0f);
 
@@ -44,9 +44,7 @@ bool GameInstance::Initialize(HWND hWnd, int width, int height)
     Input::Initialize();
 
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui_ImplWin32_Init(hWnd);
-    ImGui_ImplDX11_Init(m_graphics.GetDevice(), m_graphics.GetContext());
+    m_debugUI.Initialize(device, m_graphics.GetContext(), hWnd);
 
     D3D11_BLEND_DESC bd = {};
     bd.RenderTarget[0].BlendEnable = TRUE;
@@ -69,39 +67,23 @@ void GameInstance::Update()
 {
     UpdateSystem();
    
-    m_player.Update(m_deltaTime, m_camera.GetYaw());
+    m_scene.GetPlayer().Update(m_deltaTime, m_camera.GetYaw());
 
-    UpdateAnimation();
+    m_scene.UpdateAnimation();
+
 
     m_physics.Update(m_deltaTime);
 
-    m_camera.UpdateTPS(m_player.transform.GetPosition());
+    if (m_scene.GetPlayer().IsLockOn())
+    {
+        m_camera.UpdateLockOn(m_scene.GetPlayer().transform.GetWorldPosition(),
+            m_scene.GetPlayer().GetLockOnTarget()->transform.GetWorldPosition(),
+            m_deltaTime);
+    }
 
-    UpdateTransforms();
-}
+    m_camera.UpdateTPS(m_scene.GetPlayer().transform.GetPosition());
 
-void GameInstance::UpdateAnimation()
-{
-    Model* pModel = m_resourceManager.GetModel("Player");
-    if (!pModel) return;
-
-    std::string currentAnim = m_player.GetCurrentAnimName();
-    float animTime = m_player.GetAnimTimer();
-    bool isLoop = (currentAnim != "Jump");
-
-    pModel->CalculateBoneMatrices(currentAnim, animTime, isLoop,
-        m_boneWorlds, m_skinMatrices);
-}
-
-void GameInstance::UpdateTransforms()
-{
-    // 親 → 子 の順に呼ぶこと
-    for (auto& obj : m_terrain)     obj.transform.UpdateMatrix();
-    for (auto& obj : m_gameObjects) obj.transform.UpdateMatrix();
-
-    m_player.transform.UpdateMatrix();
-
-    m_player.UpdateWeaponTransform(m_boneWorlds);
+    m_scene.UpdateTransforms();
 }
 
 void GameInstance::UpdateSystem() 
@@ -118,11 +100,11 @@ void GameInstance::UpdateSystem()
 
     if (Input::GetKeyDown(VK_TAB))
     {
-        m_isDebugMode = !m_isDebugMode;
+        m_debugUI.ToggleDebugMode();
     }
 
     ImGuiIO& io = ImGui::GetIO();
-    if (m_isDebugMode || io.WantCaptureMouse)
+    if (m_debugUI.IsDebugMode() || io.WantCaptureMouse)
     {
         while (::ShowCursor(TRUE) < 0);
         return;
@@ -153,7 +135,10 @@ void GameInstance::UpdateSystem()
         float dy = (float)(currentMousePos.y - centerY);
 
         // カメラを回転させる
-        m_camera.Rotate(dx, dy);
+        if (!m_scene.GetPlayer().IsLockOn())
+        {
+            m_camera.Rotate(dx, dy);
+        }
 
         // マウスを中央に戻す
         SetCursorPos(centerX, centerY);
@@ -163,46 +148,8 @@ void GameInstance::UpdateSystem()
 
 void GameInstance::Render()
 {
-    Model* pModel = m_resourceManager.GetModel("Player");
-    if (!pModel) return;
-
-    static float timer = 0.0f;
-    timer += m_deltaTime;
-
-    ImGui_ImplDX11_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-
-    // ここにデバッグメニューの内容を書く
-    ImGui::Begin("Debug Menu");
-    ImGui::Text("Player Settings");
-    // ジャンプ力や移動速度をスライダーで調整できるようにする
-    ImGui::SliderFloat("Jump Power", &m_player.GetJumpPower(), 0.0f, 20.0f);
-    ImGui::SliderFloat("Move Speed", &m_player.GetMoveSpeed(), 0.0f, 20.0f);
-    static int selectedBone = 10; // 動かしたいボーンの番号
-    ImGui::SliderInt("Select Bone ID", &selectedBone, 0, (int)pModel->m_bones.size() - 1);
-    ImGui::SliderFloat("Mouse Sensitivity", &m_camera.GetSensitivity(), 0.0001f, 0.01f);
-    ImGui::SliderFloat("Right Stick Sensitivity", &m_camera.GetRightStickSensitivity(), 0.0001f, 0.1f);
-    
-    ImGui::Separator();
-    ImGui::Text("[Animation Debug]");
-    ImGui::Text("Model Bone Count: %d", (int)pModel->m_bones.size());
-    ImGui::Text("Animation Count: %d", (int)pModel->m_animations.size());
-
-    ImGui::Text("Bone Matrices: %d", (int)m_skinMatrices.size());
-    ImGui::Text("Timer: %.2f", timer);
-    ImGui::End();
-
-    if (m_isDebugMode) 
-    {
-        ImGui::Begin("Physics Debug");
-        if (m_player.m_hitHead) {
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "HEAD CRASH!"); // 赤文字で表示
-        }
-        // 確認が終わったらフラグを戻す処理など
-        if (ImGui::Button("Reset Flag")) m_player.m_hitHead = false;
-        ImGui::End();
-    }
+    m_debugUI.BeginFrame();
+    m_debugUI.BuildWindows(m_scene, m_camera, m_deltaTime);
 
     // 描画開始
     m_graphics.BeginScene(0.1f, 0.2f, 0.4f, 1.0f);
@@ -210,12 +157,9 @@ void GameInstance::Render()
     auto context = m_graphics.GetContext();
 
     // GPUへ転送
-    m_baseShader.UpdateBones(context, m_skinMatrices);
+    m_baseShader.UpdateBones(context, m_scene.GetSkinMatrices());
     m_baseShader.Bind(context);
 
-    ImGui::Begin("Debug Menu");
-    ImGui::Text("Model Bone Count: %d", (int)pModel->m_bones.size());
-    ImGui::End();
 
     // 行列の準備
     auto view = m_camera.GetViewMatrix();
@@ -223,74 +167,10 @@ void GameInstance::Render()
     auto proj = m_camera.GetProjectionMatrix(aspect);
 
     // 全てのオブジェクトを描画するループ
-    for (auto& obj : m_gameObjects)
-    {
-        obj.Draw(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
-    }
+    m_scene.Draw(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
 
-    for (auto& obj : m_terrain)
-    {
-        obj.Draw(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
-    }
-
-    m_player.Draw(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
-    m_player.DrawWeapon(context, &m_baseShader, m_constantBuffer.Get(), view, proj);
-
-
-    ImGui::Render();
-    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-
-    if (m_isDebugMode)
-    {
-        // プレイヤーのコライダーを常に表示する設定
-        m_player.m_showCollider = true;
-		m_sword.m_showCollider = true;
-
-        // コライダーを DebugRenderer に登録するための便利なラムダ式（関数内関数）
-        auto AddCollidersToDebug = [&](GameObject& obj) {
-            if (!obj.m_showCollider) return;
-            const MyMatrix4x4& colMat = obj.transform.GetWorldMatrix();
-
-            for (const auto& col : obj.m_colliders)
-            {
-                if (col.type == ColliderType::AABB) {
-                    AABB worldAABB = col.GetWorldAABB(colMat);
-                    m_debugRenderer.AddAABB(worldAABB, { 0.0f, 1.0f, 0.0f, 1.0f }); // 緑色
-                }
-                else if (col.type == ColliderType::Sphere) {
-                    Sphere worldSphere = col.GetWorldSphere(colMat);
-                    m_debugRenderer.AddSphere(worldSphere, { 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
-                }
-                else if (col.type == ColliderType::Capsule)
-                {
-                    Capsule worldCapsule = col.GetWorldCapsule(colMat);
-                    m_debugRenderer.AddCapsule(worldCapsule, { 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色で描画
-                }
-            }
-            };
-
-        // プレイヤーのコライダーを登録
-        AddCollidersToDebug(m_player);
-		AddCollidersToDebug(m_sword);
-
-        // ゲームオブジェクトのコライダーを登録
-        for (auto& obj : m_gameObjects) {
-            // テスト用に全部表示したい場合はコメントアウトを外す
-            // obj.m_showCollider = true; 
-            AddCollidersToDebug(obj);
-        }
-
-        // 地形(Terrain)のコライダーを登録
-        for (auto& obj : m_terrain) {
-            // obj.m_showCollider = true;
-            AddCollidersToDebug(obj);
-        }
-
-        // 登録したすべての線を GPU に送って描画する！
-        MyMatrix4x4 viewProj = MyMatrix4x4::Multiply(view, proj);
-        DirectX::XMMATRIX xmViewProj = DirectX::XMLoadFloat4x4((const DirectX::XMFLOAT4X4*)viewProj.m);
-        m_debugRenderer.Render(context, xmViewProj);
-    }
+    m_debugUI.RenderImGui();
+    m_debugUI.DrawColliders(context, m_scene, view, proj);
 
     //描画終了
     m_graphics.EndScene();
@@ -321,96 +201,8 @@ bool GameInstance::CreateAssets(ID3D11Device* device)
     cbDesc.Usage = D3D11_USAGE_DYNAMIC;          // 動的に変更可能にする
     cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     device->CreateBuffer(&cbDesc, nullptr, &m_constantBuffer);
-    m_debugRenderer.Initialize(device);
 
     return true;
-}
-
-void GameInstance::CreateScene() 
-{
-    m_gameObjects.clear();
-    m_terrain.clear();
-    Model* pPlayerModel = m_resourceManager.GetModel("Player");
-    if (pPlayerModel) {
-        m_player.Initialize(pPlayerModel);
-    }
-
-    // オブジェクトの配置
-    GameObject floor;
-    floor.pModel = m_resourceManager.GetModel("Plane");
-    floor.transform.SetPosition(0, 0, 0);
-    floor.transform.SetScale(50.0f, 1.0f, 50.0f);
-    floor.isStatic = true;
-    floor.AddCollider("floor_main", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 0.01f, 1.0f });
-    m_terrain.push_back(floor);
-
-    GameObject wall;
-    wall.pModel = m_resourceManager.GetModel("Cube");
-    wall.transform.SetPosition(5.0f, 1.0f, 0.0f);
-    wall.transform.SetScale(1.0f, 7.0f, 5.0f);
-    wall.isStatic = true;
-    wall.m_isTrigger = false;
-    wall.AddCollider("wall_main", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
-    wall.m_friction = 1.0f;
-    m_gameObjects.push_back(wall);
-
-    GameObject block;
-    block.pModel = m_resourceManager.GetModel("Cube");
-    block.transform.SetPosition(0.0f, 3.5f, 0.0f);
-    block.transform.SetScale(1.0f, 1.0f, 1.0f);
-    block.isStatic = false;
-    block.m_useGravity = true;
-    block.m_isTrigger = false;
-    block.m_showCollider = true;
-    block.AddCollider("block", ColliderType::AABB, { 0, 0, 0 }, { 1.0f, 1.0f, 1.0f });
-    m_gameObjects.push_back(block);
-
-    GameObject coin;
-    coin.pModel = m_resourceManager.GetModel("Cube");
-    coin.transform.SetPosition(-3.0f, 1.0f, 2.0f);
-    coin.transform.SetScale(0.5f, 0.5f, 0.5f);
-    coin.isStatic = true;
-    coin.m_isTrigger = true;
-    coin.m_showCollider = true;
-    auto& coinCol = coin.AddCollider("coin", ColliderType::Sphere, { 0,0,0 }, { 1,1,1 });
-    coinCol.radius = 0.5f;
-    coinCol.isTrigger = true;
-    m_gameObjects.push_back(coin);
-
-    WeaponData swordData;
-    swordData.name = "Sword";
-    swordData.damage = 10.0f;
-    swordData.model = m_resourceManager.GetModel("Sword");
-    swordData.localRotation = { 180.0f, -110.0f, 0.0f };
-    m_sword.Initialize(swordData);
-    m_sword.transform.SetScale(0.1f, 0.1f, 0.1f);
-    m_sword.transform.SetRotation(0.0f, -110.0f, 90.0f);
-    m_sword.transform.SetPosition(0.0f, 0.0f, 0.0f);
-    m_player.EquipWeapon(&m_sword, "mixamorig:RightHand");
-
-
-    //m_gameObjects.push_back(character);
-
-
-    //m_sword.pModel = &m_swordModel;
-
-    m_physics.AddDynamicObject(&m_player);
-    for (auto& obj : m_terrain)
-    {
-        m_physics.AddStaticObject(&obj);
-    }
-    for (auto& obj : m_gameObjects)
-    {
-        if (obj.isStatic)
-        {
-            m_physics.AddStaticObject(&obj);  // コインなどはこっち
-        }
-        else
-        {
-            m_physics.AddDynamicObject(&obj); // 木箱などはこっち
-        }
-    }
-   
 }
 
 void GameInstance::Finalize() 

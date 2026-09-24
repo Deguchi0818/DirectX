@@ -27,6 +27,7 @@ public:
         const std::vector<DirectX::XMMATRIX>& boneWorlds);
 
     bool IsValid() const { return m_target != nullptr && m_boneIndex >= 0; }
+    GameObject* GetTarget() const { return m_target; }
 
 private:
     GameObject* m_target = nullptr;   // 所有しない。参照のみ。

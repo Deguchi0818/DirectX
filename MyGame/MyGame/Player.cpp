@@ -9,10 +9,7 @@ void Player::Initialize(Model* model)
 {
     pModel = model;
 
-    m_stateAnimMap[PlayerState::Idle] = "Idle";
-    m_stateAnimMap[PlayerState::Run] = "Running";
-    m_stateAnimMap[PlayerState::Jump] = "Jump";
-    m_stateAnimMap[PlayerState::Attack] = "Attack";
+    ChangeState(&m_idleState);
 
     transform.SetScale(0.01f, 0.01f, 0.01f);
     transform.SetRotation(0.0f, 0.0f, 0.0f);
@@ -31,125 +28,171 @@ void Player::Initialize(Model* model)
 
     m_showCollider = true;
 
-    transform.UpdateMatrix();
 }
 
 void Player::Update(float dt, float camYaw)
 {
-    float moveX = 0.0f;
-    float moveZ = 0.0f;
+     UpdateAnimTimer(dt);
 
-    moveX = Input::GetAxisX();
-    moveZ = Input::GetAxisZ();
+     UpdateInput(camYaw);
+     UpdateMove(dt);
+     UpdateRotation(dt);
+     UpdateJump(dt);
 
-    if (Input::GetKey('W')) moveZ += 1.0f;
-    if (Input::GetKey('S')) moveZ -= 1.0f;
-    if (Input::GetKey('A')) moveX -= 1.0f;
-    if (Input::GetKey('D')) moveX += 1.0f;
+     m_currentState->Update(*this, dt);
 
-    MyVector3 vel = GetVelocity();
+     PlayAnimation(m_currentState->GetAnimName());
 
-    UpdateAnimTimer(dt);
+     m_isGrounded = false;
 
-    float len = sqrtf(moveX * moveX + moveZ * moveZ);
-    if (len > 0.5f)
+}
+
+void Player::UpdateInput(float camYaw) 
+{
+    m_moveDirX = Input::GetAxisX();
+    m_moveDirZ = Input::GetAxisZ();
+
+    if (Input::GetKey('W')) m_moveDirZ += 1.0f;
+    if (Input::GetKey('S')) m_moveDirZ -= 1.0f;
+    if (Input::GetKey('A')) m_moveDirX -= 1.0f;
+    if (Input::GetKey('D')) m_moveDirX += 1.0f;
+
+    float len = sqrtf(m_moveDirX * m_moveDirX + m_moveDirZ * m_moveDirZ);
+    m_hasMoveInput = (len > 0.5f);
+    if (m_hasMoveInput)
     {
-        if (m_isGrounded) m_state = PlayerState::Run;
-        // 入力の強さを保存
-        float inputIntensity = (len > 1.0f) ? 1.0f : len;
+        m_inputIntensity = (len > 1.0f) ? 1.0f : len;
 
-        moveX /= len;
-        moveZ /= len;
+        m_moveDirX /= len;
+        m_moveDirZ /= len;
 
         float fwdX = sinf(camYaw);
         float fwdZ = cosf(camYaw);
         float rtX = cosf(camYaw);
         float rtZ = -sinf(camYaw);
 
-        float finalMoveX = (moveX * rtX) + (moveZ * fwdX);
-        float finalMoveZ = (moveX * rtZ) + (moveZ * fwdZ);
+        float finalMoveX = (m_moveDirX * rtX) + (m_moveDirZ * fwdX);
+        float finalMoveZ = (m_moveDirX * rtZ) + (m_moveDirZ * fwdZ);
 
-        vel.x = finalMoveX * m_moveSpeed * inputIntensity;
-        vel.z = finalMoveZ * m_moveSpeed * inputIntensity;
+        m_moveDirX = finalMoveX;
+        m_moveDirZ = finalMoveZ;
 
-        float targetYaw = atan2f(finalMoveX, finalMoveZ) * (180.0f / 3.14159265f);
-        //transform.SetRotation(0.0f, targetYaw - 180.0f, 0.0f);
-
-        //float targetYaw = atan2f(finalMoveX, finalMoveZ) * (180.0f / 3.14159265f);
-        //transform.SetRotation(90.0f, targetYaw + -90.0f, 0.0f);
-
-		float currentYaw = transform.GetRotation().y;
-		float target = targetYaw - 180.0f;
-
-		float diff = fmodf(target - currentYaw, 360.0f);
-		if (diff < -180.0f) diff += 360.0f;
-		if (diff > 180.0f) diff -= 360.0f;
-
-        const float turnBlend = 1.0f - expf(-m_turnSpeed * dt);
-        float newYaw = currentYaw + diff * turnBlend;
-        transform.SetRotation(0.0f, newYaw, 0.0f);
-
-        transform.UpdateMatrix();
     }
+
+    if (Input::GetKeyDown('R'))
+    {
+        m_isLockOn = !m_isLockOn;
+    }
+}
+
+void Player::UpdateMove(float dt) 
+{
+    MyVector3 vel = GetVelocity();
+
+    if (m_hasMoveInput) 
+    {
+        float dot = vel.x * m_moveDirX + vel.z * m_moveDirZ;
+        float accel = (dot < 0.0f) ? m_brakeAccel : m_moveAccel;
+
+        vel.x += m_moveDirX * accel * m_inputIntensity * dt;
+        vel.z += m_moveDirZ * accel * m_inputIntensity * dt;
+
+
+    }
+
+    float velLen = sqrtf(vel.x * vel.x + vel.z * vel.z);
+
+    if (velLen > m_currentSpeedLimit)
+    {
+        vel.x /= velLen;
+        vel.x *= m_currentSpeedLimit;
+
+        vel.z /= velLen;
+        vel.z *= m_currentSpeedLimit;
+    }
+
+    SetVelocity(vel);
+}
+
+void Player::UpdateRotation(float dt) 
+{
+    float targetYaw;
+    
+    if (m_isLockOn && m_lockOnTarget != nullptr) 
+    {
+        MyVector3 myPos = transform.GetWorldPosition();
+        MyVector3 targetPos = m_lockOnTarget->transform.GetWorldPosition();
+
+        float dirX = targetPos.x - myPos.x;
+        float dirZ = targetPos.z - myPos.z;
+
+        targetYaw = atan2f(dirX, dirZ) * (180.0f / 3.14159265f);
+    }
+
+    else if (m_hasMoveInput) 
+    {
+        targetYaw = atan2f(m_moveDirX, m_moveDirZ) * (180.0f / 3.14159265f);
+    }
+
     else
     {
-        if (m_isGrounded && m_state != PlayerState::Attack) m_state = PlayerState::Idle;
-        //vel.x = 0.0f;
-        //vel.z = 0.0f;
+        return;
+    }
+    
+
+    float currentYaw = transform.GetRotation().y;
+    // モデルが初期状態で手前を向いているため、180度ずらして補正する
+    float target = targetYaw - 180.0f;
+
+    float diff = fmodf(target - currentYaw, 360.0f);
+    if (diff < -180.0f) diff += 360.0f;
+    if (diff > 180.0f) diff -= 360.0f;
+
+    const float turnBlend = 1.0f - expf(-m_turnSpeed * dt);
+    float newYaw = currentYaw + diff * turnBlend;
+    transform.SetRotation(0.0f, newYaw, 0.0f);
+}
+
+void Player::UpdateJump(float dt) 
+{
+    MyVector3 vel = GetVelocity();
+
+    if (Input::GetKeyDown(VK_SPACE) && (m_isGrounded || coyoteTimer >= 0) ||
+        Input::GetButtonDown(XINPUT_GAMEPAD_A) && (m_isGrounded || coyoteTimer >= 0))
+    {
+        vel.y = m_jumpPower;
+        m_isGrounded = false;
+        coyoteTimer = -1.0f;
+        ChangeToJump();
     }
 
-    if (coyoteTimer >= 0) 
+    if (coyoteTimer >= 0)
     {
         coyoteTimer -= dt;
     }
 
-    if (Input::GetKeyDown(VK_SPACE) && (m_isGrounded || coyoteTimer >= 0) || 
-        Input::GetButtonDown(XINPUT_GAMEPAD_A) && (m_isGrounded || coyoteTimer >= 0))
-    {
-        m_state = PlayerState::Jump;
-        vel.y = m_jumpPower;
-        m_isGrounded = false;
-        coyoteTimer = -1.0f;
-    }
-
-    if (Input::GetKeyDown('Q') && m_isGrounded && m_state != PlayerState::Attack)
-    {
-        m_state = PlayerState::Attack;
-		m_attackTimer = 0.0f;
-
-    }
-
-    else if(m_state == PlayerState::Attack)
-    {
-        m_attackTimer += dt;
-
-		float animDuration = pModel->GetAnimationDuration(m_stateAnimMap[m_state]);
-
-        if (m_attackTimer >= animDuration) // 攻撃アニメーションの長さに応じて調整
-        {
-            m_state = (m_isGrounded && len > 0.5f)
-                ? PlayerState::Run
-                : PlayerState::Idle;
-        }
-	}
-
     SetVelocity(vel);
+}
 
-    m_isGrounded = false;
+void Player::ChangeState(PlayerStateBase* next) 
+{
+    if (m_currentState == next) return;
 
-    if (m_stateAnimMap.count(m_state) > 0) 
-    {
-        if (m_state == PlayerState::Jump) 
-        {
-            // ジャンプの時だけ、しゃがみを飛ばしてから再生する
-            PlayAnimation(m_stateAnimMap[m_state], 0.7f);
-        }
-        else 
-        {
-            // 走る・待機などは今まで通り再生
-            PlayAnimation(m_stateAnimMap[m_state], 0.0f);
-        }
-    }
+    if (m_currentState) m_currentState->OnExit(*this);
+
+    m_currentState = next;
+
+    m_currentState->OnEnter(*this);
+}
+
+bool Player::IsAttackInput() const
+{
+    return Input::GetKeyDown('Q');
+}
+
+bool Player::IsQuickBoostInput() const
+{
+    return Input::GetKeyDown(VK_SHIFT);
 }
 
 void Player::OnCollisionEnter(std::string myCol, GameObject* other, std::string otherCol)
@@ -163,17 +206,4 @@ void Player::OnCollisionEnter(std::string myCol, GameObject* other, std::string 
     {
         m_hitHead = true;
     }
-}
-
-void Player::UpdateWeaponTransform(const std::vector<DirectX::XMMATRIX>& boneWorlds)
-{
-    m_weaponAttachment.Update(transform.GetWorldMatrix(), boneWorlds);
-}
-
-void Player::DrawWeapon(ID3D11DeviceContext* context, Shader* shader, ID3D11Buffer* cb, const MyMatrix4x4& view, const MyMatrix4x4& proj)
-{
-    if (!m_equippedWeapon) return;
-
-    // 姿勢は Update 側で確定済みなので、ここは描画するだけ
-    m_equippedWeapon->Draw(context, shader, cb, view, proj);
 }

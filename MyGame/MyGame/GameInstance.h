@@ -5,16 +5,20 @@
 #include <directxmath.h>
 #include <vector>
 #include <chrono>
+#include <memory>
 
 #include "GameObject.h"
 #include "Camera.h"
 #include "Graphics.h"
 #include "Shader.h"
 #include "Model.h"
+#include "Scene.h"
 #include "Player.h"
 #include "PhysicsEngine.h"
 #include "DebugRenderer.h"
 #include "ResourceManager.h"
+#include "Weapon.h"
+#include "DebugUI.h"
 
 
 class GameInstance
@@ -34,7 +38,6 @@ private:
 
 
 	bool CreateAssets(ID3D11Device* device); // モデルやシェーダーの作成
-	void CreateScene();                      // オブジェクトの配置と物理登録
 
 	void UpdateSystem();
 	void UpdateTransforms();
@@ -42,25 +45,20 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer>           m_constantBuffer;
 
-	std::vector<GameObject> m_gameObjects;
-	std::vector<GameObject> m_terrain;
-
 	ResourceManager m_resourceManager;
+
+	Scene m_scene;
+	DebugUI m_debugUI;
 
 	Graphics m_graphics;
 	Shader m_baseShader;
 	Camera m_camera;
-	Player m_player;
 	PhysicsEngine m_physics;
-	DebugRenderer m_debugRenderer;
-	Weapon m_sword;
 
 	std::chrono::high_resolution_clock::time_point m_lastTime;
 	float m_deltaTime = 0.0f;
 
 	std::vector<DirectX::XMMATRIX> m_boneWorlds;    // ボーンのワールド行列
 	std::vector<DirectX::XMMATRIX> m_skinMatrices;	// シェーダーへ送るスキニング行列
-
-	bool m_isDebugMode = false;
 };
 

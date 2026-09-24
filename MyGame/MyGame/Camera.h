@@ -23,6 +23,8 @@ public:
 	float& GetSensitivity() { return sensitivity; }
 	float& GetRightStickSensitivity() { return rightStickSensitivity; }
 
+	void UpdateLockOn(const MyVector3& playerPos, const MyVector3& targetPos, float dt);
+	float m_lockOnSpeed = 8.0f;
 private:
 	Transform m_transform;
 	float m_fov{ std::numbers::pi_v<float> / 4.0f };	// フィールド・オブ・ビュー

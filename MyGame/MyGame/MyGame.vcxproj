@@ -137,6 +137,7 @@
     <ClInclude Include="Collider.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="DebugRenderer.h" />
+    <ClInclude Include="DebugUI.h" />
     <ClInclude Include="GameInstance.h" />
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="GeometryGenerator.h" />
@@ -155,7 +156,9 @@
     <ClInclude Include="MyMatrix4x4.h" />
     <ClInclude Include="PhysicsEngine.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="PlayerState.h" />
     <ClInclude Include="ResourceManager.h" />
+    <ClInclude Include="Scene.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="Weapon.h" />
@@ -166,6 +169,7 @@
     <ClCompile Include="Coin.cpp" />
     <ClCompile Include="Collider.cpp" />
     <ClCompile Include="DebugRenderer.cpp" />
+    <ClCompile Include="DebugUI.cpp" />
     <ClCompile Include="GameInstance.cpp" />
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="GeometryGenerator.cpp" />
@@ -183,7 +187,9 @@
     <ClCompile Include="MyMatrix4x4.cpp" />
     <ClCompile Include="PhysicsEngine.cpp" />
     <ClCompile Include="Player.cpp" />
+    <ClCompile Include="PlayerState.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
+    <ClCompile Include="Scene.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="Weapon.cpp" />
